@@ -101,7 +101,7 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 * [General Spacecraft Info](https://gaia.esac.esa.int/documentation//GDR1/Introduction/chap\_intro\_intro\_chapter/sec\_mission.html#SS3) Information on the Focal Plane Assembly and Video Processing Units
 * [OBMT Decoder](https://gaia.esac.esa.int/decoder/obmtDecoder.jsp) provides conversion between UTC and Gaia Onboard Mission Time (OBMT)
 * [Cosmic Rays from BAM](https://gea.esac.esa.int/archive-doc/crays/index.html) Cosmic Rays in Gaia Data as extracted from BAM data
-* [LA Cosmics code] (http://www.astro.yale.edu/dokkum/lacosmic/) Laplacian Cosmic Ray Identification
+* [LA Cosmics code](http://www.astro.yale.edu/dokkum/lacosmic/) Laplacian Cosmic Ray Identification
 * (To be added) (Gaia MDB Web) provides information on the available database in gbin format for a given time and Obtm Time Range 
 
 
