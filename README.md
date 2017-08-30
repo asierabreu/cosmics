@@ -96,6 +96,7 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 
 ## Useful Resources
 
+* https://gaia.esac.esa.int/documentation//GDR1/Introduction/chap\_intro\_intro\_chapter/sec\_mission.html#SS3 General Information on the Focal Plane Assembly and Video Processing Units
 * https://gaia.esac.esa.int/decoder/obmtDecoder.jsp ( OBMT decoder) provides conversion between UTC and Gaia Onboard Mission Time (OBMT)
 * https://gea.esac.esa.int/archive-doc/crays/index.html Early Data Release : Cosmic Rays in Gaia Data as extracted from BAM data
 * (To be added) (Gaia MDB Web) provides information on the available database in gbin format for a given time and Obtm Time Range 
