@@ -104,10 +104,6 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 * [LA Cosmics code](http://www.astro.yale.edu/dokkum/lacosmic/) Laplacian Cosmic Ray Identification
 
 
-## Code Repository
+## Sample Code 
 
-```javascript
-$(function(){
-  $('div').html('I am a div.');
-});
-```
+Very basic sample (python) code to read in and display Gaia FITS images is available under <it>sample</it> directory. 
