@@ -22,7 +22,7 @@ Radiation damage effects (in particular displacement damage) caused by those two
 
 CTI Evolution with OBMT:
 
-<img src="images/cti.png" width="500" height="380" align="centre">
+<img src="images/cti.png" width="500" height="300" align="centre">
 
 It is known that the GCR component of the cosmic rays shows a periodic variation along the solar cycle, an anti-correlation with solar activity that is caused by the varying strength of the solar magnetic field withing the solar cycle.  A stronger magnetic field (during maximum) diffuses more efficiently galactic cosmic rays impeding them reaching the inner parts of the Solar System, thus producing lower fluxes of GCRs during maximum and viceversa.
 
