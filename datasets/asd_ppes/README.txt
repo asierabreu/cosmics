@@ -11,4 +11,6 @@ Column 6: Cumulative	, Cumulative Total nb. of PPEs
 
 Note that the corresponding Field Of View (SM1 or SM2) is embedded in the file name: e.g : ASD4_Counters_FOV1_ROW1.dat
 
-Extracted as of 1st Sep 2017
+Latest Extracted at : 1st Sep 2017
+
+FTP repository location: ftp://ftp.sciops.esa.int/pub/gaiacal
