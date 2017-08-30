@@ -1,4 +1,4 @@
-# Cosmic Rays in Gaia Data
+# Cosmic Rays in Gaia Data [![Gaia](https://github.com/asierabreu/cosmics/tree/master/images/gaia-logo.png)](https://github.com/asierabreu/cosmics/tree/master/images/gaia-logo.png)
 
 ## Introduction 
 
