@@ -1,6 +1,6 @@
 # Cosmic Rays in Gaia Data 
 
-<img src="images/gaia-satellite.jpg"?raw=true height="200" align="right">
+<img src="images/gaia-satellite.jpg" height="200" align="right">
 
 ## Introduction 
 
@@ -22,7 +22,7 @@ The effect of both components can be seen in the following figure from Gaia CCDs
 
 CTI Evolution with OBMT:
 
-![CTI](images/cti.png?raw=true)
+![CTI](images/cti.png?raw=true =100x40)
 
 It is known that the GCR component of the cosmic rays shows a periodic variation along the solar cycle, an anti-correlation with solar activity that is caused by the varying strength of the solar magnetic field withing the solar cycle.  A stronger magnetic field (during maximum) diffuses more efficiently galactic cosmic rays impeding them reaching the inner parts of the Solar System, thus producing lower fluxes of GCRs during maximum and viceversa.
 
@@ -32,7 +32,7 @@ The following is a long term plot of the Prompt Particle Event counters (or PPE 
 
 Prompt Particle Events Evolution with OBMT:
 
-![PPEs](images/ppes.png?raw=true)
+![PPEs](images/ppes.png?raw=true =100x40)
 
 ## Gaia Available Datasets
 
