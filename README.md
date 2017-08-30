@@ -106,5 +106,5 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 
 ## Sample Code 
 
-Very basic sample (python) code to read in and display Gaia FITS images is available under <it>sample</it> directory. 
+Very basic sample (python) code to read in and display a few Gaia FITS images is available under demo directory. 
 Generic matplotlib settings are under templates directory.
