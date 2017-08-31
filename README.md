@@ -32,7 +32,7 @@ The following is a long term plot of the Prompt Particle Event counters (or PPE 
 
 Prompt Particle Events Evolution with OBMT:
 
-<img src="images/ppes.png" width="600" height="400" align="centre">
+<img src="images/ppes.png" width="600" height="350" align="centre">
 
 ## Gaia Available Datasets
 
