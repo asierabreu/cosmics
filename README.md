@@ -101,6 +101,7 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 * [General Spacecraft Info](https://gaia.esac.esa.int/documentation//GDR1/Introduction/chap\_intro\_intro\_chapter/sec\_mission.html#SS3) Information on the Focal Plane Assembly and Video Processing Units
 * [OBMT Decoder](https://gaia.esac.esa.int/decoder/obmtDecoder.jsp) provides conversion between UTC and Gaia Onboard Mission Time (OBMT)
 * [Cosmic Rays from BAM](https://gea.esac.esa.int/archive-doc/crays/index.html) Cosmic Rays in Gaia Data as extracted from BAM data
+* [SPENVIS](https://www.spenvis.oma.be/) SPace ENVironment Information System, models of the space environment and its effects; including cosmic rays, natural radiation belts, solar energetic particles, plasmas, gases, and "micro-particles".
 * [LA Cosmics code](http://www.astro.yale.edu/dokkum/lacosmic/) Laplacian Cosmic Ray Identification
 
 ## Reference Documentation
