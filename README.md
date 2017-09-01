@@ -103,6 +103,9 @@ Relative comparisons of satellite data on equivalent timeframes at different pos
 * [Cosmic Rays from BAM](https://gea.esac.esa.int/archive-doc/crays/index.html) Cosmic Rays in Gaia Data as extracted from BAM data
 * [LA Cosmics code](http://www.astro.yale.edu/dokkum/lacosmic/) Laplacian Cosmic Ray Identification
 
+## Reference Documentation
+
+* [Radiation and Cosmics from Gaia at L2 TN](https://gaia.esac.esa.int/dpacsvn/DPAC/DPCE/docs/Calibration/AAA-035-Cosmics/) Technical note on the analysis of cosmics as detected by Gaia at L2 around 2 years after launch. 
 
 ## Sample Code 
 
