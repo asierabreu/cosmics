@@ -24,7 +24,10 @@ CTI Evolution with OBMT:
 
 <img src="images/cti.png" width="500" height="300" align="centre">
 
-It is known that the GCR component of the cosmic rays shows a periodic variation along the solar cycle, an anti-correlation with solar activity that is caused by the varying strength of the solar magnetic field withing the solar cycle.  A stronger magnetic field (during maximum) diffuses more efficiently galactic cosmic rays impeding them reaching the inner parts of the Solar System, thus producing lower fluxes of GCRs during maximum and viceversa.
+It is known that the GCR component of the cosmic rays shows a periodic variation along the solar cycle, an anti-correlation with solar activity that is caused by the varying strength of the solar magnetic field withing the solar cycle.  A stronger magnetic field (during maximum) diffuses more efficiently galactic cosmic rays impeding them reaching the inner parts of the Solar System, thus producing lower fluxes of GCRs during maximum and viceversa. Such anticorrelation can be seen in the following long-term combined plot which includes data from solar activity over ~ 3 solar cycles (measured by Daily Sunspot numers) , Cosmic ray fluxes measured at Earth and space based radiation monitoring facilities like NASA's GOES spacecraft.
+
+<img src="images/env.jpg" width="1000" height="300" align="centre">
+
 
 This anti-correlation has been observed and measured by several spacecrafts in the past. We are also able to detect such an anti-correlation when analyzing the cosmic ray hit counts produced by Gaia telemetry. 
 
