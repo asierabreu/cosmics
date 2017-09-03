@@ -35,7 +35,7 @@ The following is a long term plot of the Prompt Particle Event counters (PPE cou
 
 Prompt Particle Events Evolution with OBMT:
 
-<img src="images/ppes-sunspot.png" width="700" height="500" align="centre">
+<img src="images/ppes-sunspot.png" width="700" height="400" align="centre">
 
 ## Gaia Available Datasets
 
