@@ -12,7 +12,7 @@ Galactic Cosmic Rays (GCRs) generated outside the Solar System are primarily com
 
 Solar energetic partcles are released by the Sun via two mechanisms, solar wind and solar particle events (Solar Flares and Coronal Mass Ejections), the later producing massive amounts of (low energy) cosmic rays.   These solar phenomena (wind and SPEs) have energies -per particle- typically smaller than GCRs and in the range (0.1 MeV - 10<sup>3</sup> MeV). Here, protons constitute the bulk of the radiation particles (~ 96%) with (~4%) of alpha particles and a smaller trace component of heavier nuclei; particle fluxes can vary event to event but are typically much higher than GCRs, ~ 10<sup>4</sup>  particles cm<sup>-2</sup> s<sup>-1</sup>.
 
-Both components of the cosmic rays cause radiation damage (permanent or displacement) damage in the electronic sensing devices (CCDs) onboard spacecrafts. 
+Both components of the cosmic rays cause radiation damage in the electronic sensing devices (CCDs) onboard spacecrafts. 
 
 Radiation damage effects (in particular displacement damage) caused by those two components of the cosmic rays (Solar Particles and GCRs) can be seen in the following figure from Gaia CCDs Charge Transfer Inefficiency (CTI) evolution analysis.:
 
