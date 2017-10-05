@@ -1,0 +1,50 @@
+\documentclass[12pt]{article}
+\usepackage[left=2cm,right=2cm,top=3cm,head=4cm,bottom=2cm,a4paper]{geometry}
+\usepackage{hyperref}
+
+\begin{document}
+\section{Format Description}
+
+\subsection{Binary Table}
+The binary table and its columns are:
+
+\textbf{EVTID} ID number of the event (running int) -- perhaps unnecessary
+
+\textbf{CCD\_ROW} Row of the CCD (1-7)
+
+\textbf{CCD} CCD type (SM1/2, BAM)
+
+\textbf{OBMT\_BEG} OBMT for start of observation
+
+\textbf{OBMT\_END} OBMT for end of observation -- some SM frames have different lengths
+
+\textbf{EVENT} A 2D uint16 matrix of electrons converted to ADU
+
+\textbf{LEN\_AC} Event length in AC
+
+\textbf{LEN\_AL} Event length in AL
+
+\textbf{ETOT} Total event energy -- in either electrons or ADU
+
+\textbf{D\_ETOT} Uncertainty on total event energy -- in either electrons or ADU
+
+\subsection{Header Keywords}
+Note that, in case we decide to make individual files or individual extensions per observations, the columns \textbf{CCD\_ROW}, \textbf{CCD}, \textbf{OBMT\_BEG} and \textbf{OBMT\_END} could be moved to the headers of individual extensions. As different SM CCDs have different gains, I think this would be a good idea.
+
+NOTE: According to \url{heasarc.nasa.gov/docs/software/fitsio/user_f/node36.html}, file sizes are limited to 2.1 GB and the maximum number of extensions per fits file is 512
+\\
+
+\noindent The keywords of the header are:
+
+\textbf{OBSTYPE} Type of observation (SM-SIF, BAM-SIF, BAM-OBS)
+
+\textbf{PIX\_AC} Pixel length in AC (m/$\mu$m)
+
+\textbf{PIX\_AL} Pixel length in AL (m/$\mu$m)
+
+\textbf{BIN\_AC} Pixel binning in AC
+
+\textbf{BIN\_AL} Pixel binning in AL
+
+
+\end{document}
