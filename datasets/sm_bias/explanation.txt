@@ -1,0 +1,5 @@
+These images are taken to assess the impact of CTI on the SM. There are two images per chip - in ds9, the evolution in time is measured from the bottom.
+
+For the long ones: After a while, Gate 12 is released (for the gate structure, see https://www.aanda.org/articles/aa/full_html/2016/11/aa29272-16/F5.html), which is usually closed - so all the accumulated charge is released there. Then, they perform repeated charge injection measurements.
+
+For the short ones: First, Gate 1, shortly before the readout is closed. This means a much shorter exposure time - essentially as close as you get to a dark frame, which is how you can extract the bias. Gate 1 is then released again (so a short burst of charge), going back to Gate 12.
