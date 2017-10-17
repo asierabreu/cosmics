@@ -30,8 +30,69 @@ def sm_get_image(filename, calibfile):
     return image, gain, bias, readnoise
 
 
+def sm_starmask(image, threshold):
+    """
+    Construct a mask for all saturated stars in the SM image.
 
-def sm_starmask(image, threshold, buffer_row=1, buffer_col=1):
+    This constructs a map of pixels above threshold, labels all connected pixels as one object, using only objects that contain at least one saturated pixel (i.e. above 65535 ADU).
+    It then computes the PSF center of the given slices by analyzing the PSF and masks all pixels connected to that center.
+    """
+    import numpy as np
+    from scipy.ndimage import generate_binary_structure
+    from scipy.ndimage.morphology import binary_dilation
+    from scipy.ndimage.measurements import label, find_objects
+
+    # get the extent of the image
+    ymax, xmax = image.shape
+    ymax -= 1
+    xmax -= 1
+
+    # initialize the mask to all False
+    starmask = np.zeros(image.shape, dtype=bool)
+   
+    # if nothing is saturated, return the starmask
+    if np.max(image)<65535:
+        return starmask
+    else:
+        # mask of pixels above threshold
+        satmap = np.logical_and(image,image>=threshold)
+
+        # dilate it - sometimes, pixel values fluctuate around the threshold
+        satmap = binary_dilation(satmap,iterations=1)
+
+        # labelling all connected pixels
+        (starlabels, nstars) = label(satmap,structure=(np.ones((3,3))))
+
+        # object extraction based on labels
+        stars = find_objects(starlabels)
+
+        # only use all "stars" that have at least one sample above 65535
+        stars = [s for s in stars if np.max(image[s])==65535]
+    
+
+    # extract central points of stars and add them to the mask 
+    for star in stars:
+        # bounding box of coordinates
+        y0 = star[0].start
+        y1 = np.min([star[0].stop,ymax])
+        x0 = star[1].start
+        x1 = np.min([star[1].stop,xmax])
+        
+        # center of psf, using its "wings" as a crosshair:
+        cy = int((np.argmax(image[y0:y1,x0]) + np.argmax(image[y0:y1,x1]))/2.) + y0
+        cx = int((np.argmax(image[y0,x0:x1]) + np.argmax(image[y1,x0:x1]))/2.) + x0
+                
+        # label for the center
+        clabel = starlabels[cy,cx]
+        
+        # THIS region needs to be masked
+        starmask[starlabels==clabel] = 1
+    
+    #return starmask - dilate it once (we won't be losing much here)
+    return binary_dilation(starmask,iterations=1)
+
+
+def sm_starmask_box(image, threshold, buffer_row=1, buffer_col=1):
     """
     Construct a mask for all saturated stars in the SM image.
 
