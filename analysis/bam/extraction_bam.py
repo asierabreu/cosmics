@@ -12,8 +12,8 @@ import gbin_reader
 def bam_read_obs(reader, bias, gain):
     """
     Read the next bamObservation of reader and perform bias-subtraction and gain-correction.
-    Returns the extracted pattern and its FOV
-    Returns pattern = None and Fov = None if the end has been reached
+    Returns the extracted pattern, its FOV and OBMT
+    Returns None, None, None if the end has been reached
 
     filename: filename of the BAM observation
     bias: bias value
@@ -24,12 +24,13 @@ def bam_read_obs(reader, bias, gain):
     try:
         tempObs = reader.__next__()
     except StopIteration:
-        return None, None
+        return None, None, None
 
     fov = tempObs.fov
+    acqTime = tempObs.acqTime
     pattern = (np.array(tempObs.samples).reshape(1000,80)).astype("float64")
     pattern = (pattern-bias)*gain
-    return pattern, fov
+    return pattern, fov, acqTime
 
 
 # Function to "keep the boxcar moving"
@@ -103,6 +104,9 @@ def boxcar_signal(boxcar, i_sig, readnoise):
 # for now, just use median clipping
 
 def boxcar_cosmics(signal, err_mean, threshold, threshfrac):
+    """
+    Docstring TBD
+    """
 
     import numpy as np
     import astroscrappy
@@ -139,6 +143,7 @@ def boxcar_cosmics(signal, err_mean, threshold, threshfrac):
     locs = []     # a list of tuples for the START of events
     Etot = []     # total energies
     delEtot = []    # uncertainties of energy
+    # AND the acquisition time and duration, but as a None
     
     signal *= mask
 
@@ -162,7 +167,7 @@ def boxcar_cosmics(signal, err_mean, threshold, threshfrac):
         err[lab!= ii] == 0
         delEtot.append(np.sqrt(np.sum(err**2)))
         
-    output = dict([('cosmics', cosmics), ('locs', locs), ('Etot', Etot), ('delEtot', delEtot)])
+    output = dict([('cosmics', cosmics), ('locs', locs), ('Etot', Etot), ('delEtot', delEtot), ('acqTime', None), ('dT', None)])
 
     return output
-    # OBMT needs to be aquired externally!
+    # OBMT needs to be acquired externally!

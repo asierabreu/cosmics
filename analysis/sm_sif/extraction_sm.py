@@ -6,13 +6,15 @@
 
 def sm_get_image(filename, calibfile):
     """
-    Retrieve image data from filename and gain, bias and readnoise from calibfile.
+    Retrieve image data from filename and gain, bias and readnoise from calibfile. Also return data on the chip used and the acquisition time.
     """
     from astropy.io import fits
     hdusource = fits.open(filename)
 
     row = hdusource[0].header['CCD_ROW']
     fov = int((hdusource[0].header['CCD'])[2])
+    tstart = hdusource[0].header['OBMT_BEG']
+    tstop = hdusource[0].header['OBMT_END']
     image = hdusource[0].data
 
     hdusource.close()
@@ -27,15 +29,15 @@ def sm_get_image(filename, calibfile):
 
     hducal.close()
     
-    return image, gain, bias, readnoise
+    return image, gain, bias, readnoise, fov, row, tstart, tstop
 
 
 def sm_starmask(image, threshold):
     """
     Construct a mask for all saturated stars in the SM image.
 
-    This constructs a map of pixels above threshold, labels all connected pixels as one object, using only objects that contain at least one saturated pixel (i.e. above 65535 ADU).
-    It then computes the PSF center of the given slices by analyzing the PSF and masks all pixels connected to that center.
+    This constructs a map of pixels above threshold, labels all connected pixels as one object, then searches for objects that contain at least one saturated pixel (i.e. above 65535 ADU).
+    All pixels connected to those saturated pixels are then masked.
     """
     import numpy as np
     from scipy.ndimage import generate_binary_structure
@@ -62,39 +64,21 @@ def sm_starmask(image, threshold):
 
         # labelling all connected pixels
         (starlabels, nstars) = label(satmap,structure=(np.ones((3,3))))
-
-        # object extraction based on labels
-        stars = find_objects(starlabels)
-
-        # only use all "stars" that have at least one sample above 65535
-        stars = [s for s in stars if np.max(image[s])==65535]
-    
-
-    # extract central points of stars and add them to the mask 
-    for star in stars:
-        # bounding box of coordinates
-        y0 = star[0].start
-        y1 = np.min([star[0].stop,ymax])
-        x0 = star[1].start
-        x1 = np.min([star[1].stop,xmax])
         
-        # center of psf, using its "wings" as a crosshair:
-        cy = int((np.argmax(image[y0:y1,x0]) + np.argmax(image[y0:y1,x1]))/2.) + y0
-        cx = int((np.argmax(image[y0,x0:x1]) + np.argmax(image[y1,x0:x1]))/2.) + x0
+        # we're only interested in the labels of pixels that are saturated
+        # so, get all the labels that have that:
+        satlabels = np.unique(starlabels[image==65535])
+        
+        for lab in satlabels:
+            starmask[starlabels==lab] = 1
                 
-        # label for the center
-        clabel = starlabels[cy,cx]
-        
-        # THIS region needs to be masked
-        starmask[starlabels==clabel] = 1
-    
-    #return starmask - dilate it once (we won't be losing much here)
-    return binary_dilation(starmask,iterations=1)
+        #return starmask - dilate it once (we won't be losing much here)
+        return binary_dilation(starmask,iterations=1)
 
 
 def sm_starmask_box(image, threshold, buffer_row=1, buffer_col=1):
     """
-    Construct a mask for all saturated stars in the SM image.
+    [DEPRECATED] Construct a mask for all saturated stars in the SM image.
 
     This constructs a map of pixels above threshold, labels all connected pixels as one object and rejects all objects that do not contain at least one saturated pixel (i.e. above 65535 ADU).
     It then computes the PSF center of the given slices by analyzing the PSF and adds a rectangle with the maximum distance in x (AC) and y (AL)
@@ -178,7 +162,7 @@ def sm_extract_evtlocs(image, gain, bias, readnoise, starmask):
     import astroscrappy
     from scipy.ndimage.measurements import label, find_objects
     
-    imbias = np.subtract(image, bias)
+    imbias = np.subtract(np.copy(image), np.copy(bias))
 
     # apply scrappy
     (mask,clean) = astroscrappy.detect_cosmics(imbias, gain=gain, verbose=False, inmask=starmask, satlevel=65535, readnoise=readnoise, sepmed=False, cleantype='medmask', fsmode='median')
@@ -192,3 +176,94 @@ def sm_extract_evtlocs(image, gain, bias, readnoise, starmask):
     cosmics = ((imbias)*gain - clean)*mask
 
     return evtlocs, cosmics
+
+
+def sm_cosmics(source, gain, bias, readnoise, starmask, sigclip, sigfrac, objlim):
+    """
+    Docstring TBD
+    """
+    import numpy as np
+    import astroscrappy
+    import scipy.ndimage as ndimage
+    from scipy.signal import convolve2d
+
+    
+    # construct mask with astroscrappy
+    imbias = np.subtract(source, bias)
+
+    # apply scrappy
+    (mask,clean) = astroscrappy.detect_cosmics(imbias, gain=gain, verbose=False, inmask=starmask, 
+                                           satlevel=65535, readnoise=readnoise, sepmed=False, 
+                                           cleantype='meanmask', fsmode='median',
+                                           sigclip=sigclip, sigfrac=sigfrac, objlim=objlim)
+
+    # label cosmics
+    (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))
+
+    # object extraction
+    events = ndimage.measurements.find_objects(labels)
+    
+    
+    # cosmic signal
+    signal = ((imbias)*gain - clean)*mask*(1-starmask)
+    
+    
+    # calculate the uncertainty of the signal (mean mask + counting noise)
+    err_mean = np.zeros(source.shape)
+
+    (xmax, ymax) = source.shape
+    totmask = starmask+mask    # masked pixels, including stars
+    totmask[totmask==2]=1      # there should be no overlap, but to be safe
+    unmasked = (imbias)*gain * (1-totmask)
+
+    rad = 2   # i.e. 2 for a 5x5 filter
+
+    # We need to count the number of unmasked pixels in the filter and
+    # the sum of unmasked pixel values in the filter
+    # This can be done very easily using convolution!
+
+    kernel = np.ones((2*rad+1,2*rad+1))
+
+    N_unm = convolve2d(1-totmask, kernel, mode="same", boundary="fill", fillvalue=0)
+    N_unm[N_unm==0]=1            # we'll be dividing by this later - this stops errors
+
+    var_mean = convolve2d(unmasked, kernel, mode="same", boundary="fill", fillvalue=0) # sum up everything around
+    var_mean = (readnoise*readnoise + var_mean/N_unm)/N_unm                            # from error propagation
+
+    err_mean = np.sqrt(var_mean + readnoise*readnoise + gain*imbias)              # total error
+    # note: we only need to use errors in the MASKED region, since everything else
+    #       was never replaced!
+    # (Theoretically we didn't even need to calculate it there, but convolution is very fast)
+    
+
+    # output is a dictionary, containing the arrays
+    cosmics = []  # the cosmic ray images
+    locs = []     # a list of tuples for the START of events
+    Etot = []     # total energies
+    delEtot = []    # uncertainties of energy
+    # AND the acquisition time and duration, but as a None
+    
+    for ii in range(ntracks):
+        location = events[ii]
+        
+        # the event (only for this label)
+        cosmic = signal[location]
+        lab = labels[location]
+        cosmic[lab!=ii] == 0
+        cosmics.append(cosmic)
+        
+        # the location
+        locs.append((location[0].start, location[1].start))
+        
+        # total energy
+        Etot.append(np.sum(cosmic))
+        
+        # uncertainty on total energy
+        err = err_mean[location]
+        err[lab!= ii] == 0
+        delEtot.append(np.sqrt(np.sum(err**2)))
+        
+    output = dict([('cosmics', cosmics), ('locs', locs), ('Etot', Etot), ('delEtot', delEtot), ('acqTime', None), ('dT', None)])
+
+    return output
+    # OBMT needs to be acquired externally!
