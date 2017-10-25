@@ -1,50 +1,53 @@
 \documentclass[12pt]{article}
 \usepackage[left=2cm,right=2cm,top=3cm,head=4cm,bottom=2cm,a4paper]{geometry}
 \usepackage{hyperref}
+\usepackage{amsmath}
 
 \begin{document}
 \section{Format Description}
 
+For the first processing data product, we choose a fits file format storing the cosmics extracted from a single observation in one binary table.
+
+\noindent Each fits file can thus contain cosmics from up to 511 observations.
+
 \subsection{Binary Table}
 The binary table and its columns are:
 
-\textbf{EVTID} ID number of the event (running int) -- perhaps unnecessary
 
-\textbf{CCD\_ROW} Row of the CCD (1-7)
+\textbf{TRACK} A variable length uint32 array of electrons converted to ADU. This encodes the 2D data retrieved from the observation using the \texttt{numpy.flatten} routine.
 
-\textbf{CCD} CCD type (SM1/2, BAM)
+\textbf{DIM\_AL} Event length in AL
 
-\textbf{OBMT\_BEG} OBMT for start of observation
+\textbf{DIM\_AC} Event length in AC
 
-\textbf{OBMT\_END} OBMT for end of observation -- some SM frames have different lengths
+\textbf{LOC\_AL} AL Coordinate of Track Element [0,0] on the source image
 
-\textbf{EVENT} A 2D uint16 matrix of electrons converted to ADU
+\textbf{LOC\_AC} AC Coordinate of Track Element [0,0] on the source image
 
-\textbf{LEN\_AC} Event length in AC
+\textbf{TRACK\_EN} Total track energy in electrons
 
-\textbf{LEN\_AL} Event length in AL
+\textbf{DEL\_EN} Uncertainty of total track energy in electrons
 
-\textbf{ETOT} Total event energy -- in either electrons or ADU
-
-\textbf{D\_ETOT} Uncertainty on total event energy -- in either electrons or ADU
 
 \subsection{Header Keywords}
-Note that, in case we decide to make individual files or individual extensions per observations, the columns \textbf{CCD\_ROW}, \textbf{CCD}, \textbf{OBMT\_BEG} and \textbf{OBMT\_END} could be moved to the headers of individual extensions. As different SM CCDs have different gains, I think this would be a good idea.
 
-NOTE: According to \url{heasarc.nasa.gov/docs/software/fitsio/user_f/node36.html}, file sizes are limited to 2.1 GB and the maximum number of extensions per fits file is 512
-\\
+\noindent The keywords of the header, aside from automatically generated ones concerning  are:
 
-\noindent The keywords of the header are:
+\textbf{SOURCE} Source of observation (SM-SIF, BAM-SIF, BAM-OBS)
 
-\textbf{OBSTYPE} Type of observation (SM-SIF, BAM-SIF, BAM-OBS)
+\textbf{CCD\_ROW} Row of the CCD
 
-\textbf{PIX\_AC} Pixel length in AC (m/$\mu$m)
+\textbf{FOV} FOV (1/2, for all data sources)
 
-\textbf{PIX\_AL} Pixel length in AL (m/$\mu$m)
+\textbf{ACQTIME} Acquisition time [OBMT]
 
-\textbf{BIN\_AC} Pixel binning in AC
+\textbf{SRC\_AL} AL dimension of the source image
 
-\textbf{BIN\_AL} Pixel binning in AL
+\textbf{SRC\_AC} AC dimension of the source image
+
+\textbf{MASKPIX} Number of masked pixels
+
+\textbf{GAIN} CCD gain [e/ADU]
 
 
 \end{document}
