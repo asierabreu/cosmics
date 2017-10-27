@@ -1,8 +1,11 @@
 # things that are needed still
 
-# bias, readnoise, gain 
-# using BAM values for now
 # a reasonable value for the buffer and the threshold when extracting cosmics
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../lib/TrackObs/'))
+from TrackObs import *
 
 def sm_get_image(filename, calibfile):
     """
@@ -15,7 +18,7 @@ def sm_get_image(filename, calibfile):
     fov = int((hdusource[0].header['CCD'])[2])
     tstart = hdusource[0].header['OBMT_BEG']
     tstop = hdusource[0].header['OBMT_END']
-    image = hdusource[0].data
+    image = hdusource[0].data[:,7:]  # ignore the pre-scan column
 
     hdusource.close()
 
@@ -23,7 +26,7 @@ def sm_get_image(filename, calibfile):
     hducal = fits.open(calibfile)
 
     ii = 2*(row-1) + fov -1    # index of the row of interest
-    bias = hducal[1].data["BIAS"][ii]
+    bias = hducal[1].data["BIAS"][ii][7:] # ignore the pre-scan column
     gain = hducal[1].data["GAIN"][ii]
     readnoise = hducal[1].data["RNOISE"][ii]
 
@@ -49,6 +52,10 @@ def sm_starmask(image, threshold):
     ymax -= 1
     xmax -= 1
 
+    # occasionally, an overflow for very bright stars causes some pixels to be set to 0
+    # -> set them to 65535, so they will be masked
+    image[image==0] = 65535
+    
     # initialize the mask to all False
     starmask = np.zeros(image.shape, dtype=bool)
    
@@ -88,12 +95,17 @@ def sm_starmask_box(image, threshold, buffer_row=1, buffer_col=1):
     from scipy.ndimage import generate_binary_structure
     from scipy.ndimage.morphology import binary_dilation
     from scipy.ndimage.measurements import label, find_objects
+    
 
     # get the extent of the image
     ymax, xmax = image.shape
     ymax -= 1
     xmax -= 1
 
+    # occasionally, an overflow for very bright stars causes some pixels to be set to 0
+    # -> set them to 65535, so they will be masked
+    image[image==0] = 65535
+    
     # initialize the mask to all False
     starmask = np.zeros(image.shape, dtype=bool)
    
@@ -235,35 +247,42 @@ def sm_cosmics(source, gain, bias, readnoise, starmask, sigclip, sigfrac, objlim
     #       was never replaced!
     # (Theoretically we didn't even need to calculate it there, but convolution is very fast)
     
-
-    # output is a dictionary, containing the arrays
-    cosmics = []  # the cosmic ray images
-    locs = []     # a list of tuples for the START of events
-    Etot = []     # total energies
-    delEtot = []    # uncertainties of energy
-    # AND the acquisition time and duration, but as a None
     
+    # our output is a TrackObs, containing the cosmic data and several keywords
+    output = TrackObs(ntracks)
+    
+    output.source = "SM_SIF"
+    output.srcAL = xmax
+    output.srcAC = ymax
+    output.maskpix = np.sum(starmask)
+    output.gain = gain
+    # aqcTime, row and fov need to be retrieved externally
+    
+    # fill the data
     for ii in range(ntracks):
+        # the location
         location = events[ii]
+        loc = ((location[0].start, location[1].start))
         
         # the event (only for this label)
-        cosmic = signal[location]
+        cosmic = np.copy(signal[location])
         lab = labels[location]
         cosmic[lab!=ii] == 0
-        cosmics.append(cosmic)
-        
-        # the location
-        locs.append((location[0].start, location[1].start))
         
         # total energy
-        Etot.append(np.sum(cosmic))
+        Etot = np.rint((np.sum(cosmic)))
         
         # uncertainty on total energy
-        err = err_mean[location]
+        err = np.copy(err_mean[location])
         err[lab!= ii] == 0
-        delEtot.append(np.sqrt(np.sum(err**2)))
+        delEtot = np.rint((np.sqrt(np.sum(err**2))))
         
-    output = dict([('cosmics', cosmics), ('locs', locs), ('Etot', Etot), ('delEtot', delEtot), ('acqTime', None), ('dT', None)])
+        # turn the cosmic into a flattened array, but save its dimensions
+        dim = cosmic.shape
+        cosmic = cosmic.flatten()
+        # cosmics should be gain corrected and turned into ints
+        cosmic = np.rint(cosmic/gain).astype('uint16')
+        
+        output.data[ii] = (cosmic, dim[0], dim[1], loc[0], loc[1], Etot, delEtot)
 
     return output
-    # OBMT needs to be acquired externally!
