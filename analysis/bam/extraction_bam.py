@@ -41,79 +41,103 @@ def bam_read_obs(reader, bias, gain):
     return epattern, fov, acqTime
 
 
-# Function to "keep the boxcar moving"
-# Essentially call this after each extraction step, to update the boxcar and move the index for the pattern of interest
-def boxcar_update(boxcar, pattern, i_rep, i_sig):
-    """ Updates the boxcar by replacing pattern number i_sig
-    increases i_rep and i_sig by 1 each, wrapping around
+class BoxCar:
     """
-    # replace the pattern
-    boxcar[i_rep,:,:] = pattern
-
-    npatterns = boxcar.shape[0]
-
-    # update i_rep and i_sig
-    i_rep += 1
-    if i_rep >= npatterns:
-        i_rep = 0
-
-    i_sig += 1
-    if i_sig >= npatterns:
-        i_sig = 0
-
-    return i_rep, i_sig
-
+    A FIFO of bam patterns extracted via bam_read_obs used to extract cosmics from BAM observations
     
-
-def boxcar_signal(boxcar, i_sig, readnoise):
-    """ Extract background-subtracted signal and noise from a collection of bam patterns. Also returns the number of masked pixels
-    Patterns should already be bias-subtracted and gain-corrected!
-
-    boxcar: numpy array of bam patterns
-    i_sig: index of the signal pattern
-    readnoise: ccd readnoise
+    Attributes:
+    boxrad: Number of patterns before and after the pattern of interest
+    npatterns: Number of patterns (2*boxrad+1)
+    fov: FOV of the patterns
+    
+    nfilled: Number of populated patterns
+    patterns: Numpy array of patterns
+    acqTimes: respective acquisition times for each pattern
+    i_rep: index of next pattern to replace
+    i_sig: index of current signal pattern
     """
-    import numpy as np 
-    from astropy.stats import sigma_clip
-
-    npatterns = boxcar.shape[0]
-
-    # get the background
-    # compute the median over time, removing outliers via sigma clipping
-    # this also throws away the overflow pixels
-    # TODO: Value for sigma
-    bkg_src = sigma_clip(boxcar, sigma=2, iters=None, axis=0)
-
-    background = np.mean(bkg_src, axis=0)
-
-    # extract signal
-    signal = boxcar[i_sig] - background
     
-    # no signal in overflow pixels
-    signal[boxcar[i_sig]==1e10] = 0
-    N_mask = np.sum(boxcar[i_sig]==1e10) # number of masked pixels
+    def __init__(self,boxrad,fov):
+        """Constructor - creates an empty boxcar"""
+        # basic data
+        self.boxrad = boxrad
+        self.npatterns = 2*boxrad+1
+        self.fov = fov
+        
+        # empty boxcar
+        self.nfilled = 0
+        self.i_rep = 0
+        self.i_sig = 0
+        
+        self.patterns = np.zeros((self.npatterns, 1000, 80))
+        self.acqTimes = np.zeros((self.npatterns))
+        
+        
+    def update(self, pattern, acqTime):
+        """Updates the boxcar by replacing pattern and acqTime i_rep and updating i_rep and i_sig"""
+        
+        # replace the pattern and acqTime
+        self.patterns[self.i_rep,:,:] = pattern
+        self.acqTimes[self.i_rep] = acqTime
+        
+        # update i_rep and i_sig
+        # may need to start from 0 if necessary
+        self.i_rep += 1
+        if self.i_rep >= self.npatterns:
+            self.i_rep = 0
 
-    # compute uncertainty
-    (xmax, ymax) = boxcar[0].shape
-    err_mean = np.zeros((xmax,ymax))
+        self.i_sig += 1
+        if self.i_sig >= self.npatterns:
+            self.i_sig = 0        
+            
+            
+    def get_signal(self,readnoise):
+        """ Extract background-subtracted signal and noise from a collection of bam patterns. Also returns the number of masked pixels.
+        Patterns should already be bias-subtracted and gain-corrected!
 
-    # Number of elements we averaged over
-    N_time = (npatterns)-np.sum(bkg_src.mask.astype("int"),axis=0)
+        readnoise: CCD readnoise
+        """
+        import numpy as np 
+        from astropy.stats import sigma_clip
+        
+        # get the background
+        # compute the median over time, removing outliers via sigma clipping
+        # this also throws away the overflow pixels
+        # TODO: Value for sigma
+        bkg_src = sigma_clip(self.patterns, sigma=2, iters=None, axis=0)
+        background = np.mean(bkg_src, axis=0)
+        
+        # extract signal
+        signal = self.patterns[self.i_sig] - background
+        
+        # no signal in overflow pixels - they get masked
+        N_mask = np.sum(signal==1e10) # number of masked pixels
+        signal[signal==1e10] = 0
+        
+        # compute uncertainty
+        (xmax, ymax) = signal.shape
+        err_mean = np.zeros((xmax,ymax))
+        
+        # Number of elements we averaged over
+        N_time = (self.npatterns)-np.sum(bkg_src.mask.astype("int"),axis=0)
+        
+        # variance of background, from error propagation
+        var_mean = (readnoise*readnoise + np.sum(bkg_src,axis=0)/N_time)/N_time
+        
+        # total error (background + signal)
+        # this overestimates the uncertainty on the overflow pixels, but we don't care about those
+        err_mean = np.sqrt(var_mean + readnoise*readnoise + self.patterns[self.i_sig,:,:]) 
 
-    # variance of background, from error propagation
-    var_mean = (readnoise*readnoise + np.sum(bkg_src,axis=0)/N_time)/N_time
+        return signal, err_mean, N_mask
 
-    # total error (background + signal)
-    # this overestimates the uncertainty on the overflow pixels, but we don't care about those
-    err_mean = np.sqrt(var_mean + readnoise*readnoise + boxcar[i_sig,:,:]) 
 
-    return signal, err_mean, N_mask
+
 
 # Function to extract cosmics
 # Algorithm TBD, probably either laplacian detection or median clipping
 # for now, just use median clipping
 
-def boxcar_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
+def bam_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
     """
     Docstring TBD
     """
