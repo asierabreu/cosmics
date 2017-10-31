@@ -104,7 +104,9 @@ class BoxCar:
         # compute the median over time, removing outliers via sigma clipping
         # this also throws away the overflow pixels
         # TODO: Value for sigma
-        bkg_src = sigma_clip(self.patterns, sigma=2, iters=None, axis=0)
+        # perhaps I should manually reduce iters? To throw away less photon noise
+        # essentially, once sigma is roughly poisson, I don't need to discard anymore...
+        bkg_src = sigma_clip(self.patterns, sigma=2, iters=2, axis=0)
         background = np.mean(bkg_src, axis=0)
         
         # extract signal
@@ -113,6 +115,7 @@ class BoxCar:
         # no signal in overflow pixels - they get masked
         N_mask = np.sum(signal==1e10) # number of masked pixels
         signal[signal==1e10] = 0
+        # perhaps we should also mask all pixels that are saturated (i.e. 65535, in the function before?)
         
         # compute uncertainty
         (xmax, ymax) = signal.shape

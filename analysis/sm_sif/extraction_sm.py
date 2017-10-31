@@ -251,7 +251,7 @@ def sm_cosmics(source, gain, bias, readnoise, starmask, sigclip, sigfrac, objlim
     # our output is a TrackObs, containing the cosmic data and several keywords
     output = TrackObs(ntracks)
     
-    output.source = "SM_SIF"
+    output.source = "SM-SIF"
     output.srcAL = xmax
     output.srcAC = ymax
     output.maskpix = np.sum(starmask)
