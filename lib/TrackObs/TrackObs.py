@@ -4,7 +4,8 @@ import numpy as np
 from astropy.io import fits
 
 class TrackObs:
-    """ Data of particle tracks extracted from a Gaia CCD observation
+    """
+    Data of particle tracks extracted from a Gaia CCD observation
 
     Attributes:
         data: A structured numpy array containing all cosmic data
@@ -36,12 +37,10 @@ class TrackObs:
         self.srcAC = None
         self.maskpix = None
         self.gain = None
-
-    # TODO construct a TrackObs from a given fits table
     
     @classmethod
     def from_HDU(cls, hdu):
-        """build a TrackObs from a fits HDU"""
+        """Build a TrackObs from a fits HDU"""
         ntracks = len(hdu.data)
         obs = cls(ntracks)
         
@@ -65,11 +64,68 @@ class TrackObs:
         obs.gain = hdu.header["GAIN"]
 
         return obs
-
+    
+    # TODO: Method to calculate the flux measured in a TrackObs
+    # Essentially: You know the source, so pixel sizes etc. are known T_TDI is also known
+    # -> then, just use the known formulas to calculate your flux
+    def calculate_flux(self):
+        """Calculates the particle flux (in particles/cm^2/s) for this observation"""
+        # Get the correct pixel dimensions (in cm), including binning
+        if self.source in ["BAM-OBS","BAM-SIF"]:
+            # 1 x 4 binning
+            pixAL = 10e-4
+            pixAC = 120e-4
+            exptime = 4.5 * 0.9828 + 19
+        elif self.source == "SM-SIF":
+            # 2 x 2 binning
+            pixAL = 20e-4
+            pixAC = 60e-4
+            exptime = 2.9 * 0.9828
+            
+        exparea = pixAL*pixAC*(self.srcAL*self.srcAC - self.maskpix)
         
+        return len(self.data)/exparea/exptime
+    
+    def track_geometries(self):
+        """VERY PRELIMINARY!
+        Calculates the geometry of each track
+        Returns track lengths [mum] and angles theta, alpha [radians].
+        """
+        # Get the correct pixel dimensions (in mum), including binning
+        if self.source in ["BAM-OBS","BAM-SIF"]:
+            # 1 x 4 binning
+            pixAL = 10
+            pixAC = 120
+            pixdepth = 40
+        elif self.source == "SM-SIF":
+            # 2 x 2 binning
+            pixAL = 20
+            pixAC = 60
+            pixdepth = 14
+            
+        thetas = np.zeros(len(self.data))
+        alphas = np.zeros(len(self.data))
+        
+        l_al = (self.data["DIM_AL"]-1)*pixAL
+        l_ac = (self.data["DIM_AC"]-1)*pixAC
+        lengths = np.sqrt(l_al*l_al + l_ac*l_ac)
+        
+        nonzero = np.logical_and(l_al!=0, l_ac!=0)
+        thetas[nonzero] = np.arctan(l_ac[nonzero]/l_al[nonzero])
+        thetas[l_al==0] = np.pi/2
+        thetas[l_ac==0] = 0
+        thetas[lengths==0] = 10 # dummy value
+        
+        alphas[nonzero] = np.arctan(pixdepth/lengths[nonzero])
+        alphas[lengths==0] = np.pi/2
+        
+        return lengths, thetas, alphas
+                
     
 
 # function to write a list of Trackobs into a fits file
+# maybe I should make the thing that's in the loop into a method? i.e. TrackObs -> HDU
+# I would have to supply an extension name at some point, though - either save it in the TrackObs or give it as an argument to the method. Since I'm not sure whether these names should have any meaning, we can see
 def write_Obslist(obslist, outfile):
     """Write the observations from obslist into the fits file filename"""
     from astropy.io import fits
@@ -130,6 +186,7 @@ def write_Obslist(obslist, outfile):
     hdulist.writeto(outfile)
     hdulist.close()
     
+
     
 # function to read a list of TrackObs from a fits file
 def read_Obslist_fits(infile):

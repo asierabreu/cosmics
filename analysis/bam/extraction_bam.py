@@ -15,6 +15,7 @@ def bam_read_obs(reader, bias, gain):
     """
     Read the next bamObservation of reader and perform bias-subtraction and gain-correction.
     Returns the extracted pattern, its FOV and OBMT
+    The extracted pattern is masked for invalid pixels
     Returns None, None, None if the end has been reached
 
     filename: filename of the BAM observation
@@ -36,7 +37,12 @@ def bam_read_obs(reader, bias, gain):
     # in some cases, cosmics can cause an overflow in the pattern, so that some neighbouring pixels are set to 0 ADU
     # we need to mask these - set them to a fixed value - in this case, 1e10
     # (this could never be reached by the CCD (max = 65535*gain = about 260000)
-    epattern[pattern==0] = 1e10
+    #epattern[pattern==0] = 1e10
+    
+    # let's try to do an actual masked array instead - this high energy business causes problems
+    arrmask = np.zeros(pattern.shape).astype("bool")
+    arrmask[pattern==0] = True
+    epattern = np.ma.masked_array(epattern,mask=arrmask,fill_value=0) # may need to rethink fill value
     
     return epattern, fov, acqTime
 
@@ -51,7 +57,7 @@ class BoxCar:
     fov: FOV of the patterns
     
     nfilled: Number of populated patterns
-    patterns: Numpy array of patterns
+    patterns: Numpy masked(!) array of patterns
     acqTimes: respective acquisition times for each pattern
     i_rep: index of next pattern to replace
     i_sig: index of current signal pattern
@@ -69,7 +75,7 @@ class BoxCar:
         self.i_rep = 0
         self.i_sig = 0
         
-        self.patterns = np.zeros((self.npatterns, 1000, 80))
+        self.patterns = np.ma.masked_array(np.zeros((self.npatterns, 1000, 80)),mask="nomask",fill_value=0)
         self.acqTimes = np.zeros((self.npatterns))
         
         
@@ -106,15 +112,16 @@ class BoxCar:
         # TODO: Value for sigma
         # perhaps I should manually reduce iters? To throw away less photon noise
         # essentially, once sigma is roughly poisson, I don't need to discard anymore...
-        bkg_src = sigma_clip(self.patterns, sigma=2, iters=2, axis=0)
+        bkg_src = sigma_clip(self.patterns, sigma=1, iters=2, axis=0)
         background = np.mean(bkg_src, axis=0)
         
         # extract signal
         signal = self.patterns[self.i_sig] - background
         
         # no signal in overflow pixels - they get masked
-        N_mask = np.sum(signal==1e10) # number of masked pixels
-        signal[signal==1e10] = 0
+        N_mask = np.sum(self.patterns[self.i_sig].mask.astype("int")) # number of masked pixels
+        signal[self.patterns[self.i_sig].mask] = 0
+        signal.mask = self.patterns[self.i_sig].mask
         # perhaps we should also mask all pixels that are saturated (i.e. 65535, in the function before?)
         
         # compute uncertainty
@@ -131,7 +138,7 @@ class BoxCar:
         # this overestimates the uncertainty on the overflow pixels, but we don't care about those
         err_mean = np.sqrt(var_mean + readnoise*readnoise + self.patterns[self.i_sig,:,:]) 
 
-        return signal, err_mean, N_mask
+        return signal, err_mean
 
 
 
@@ -140,7 +147,7 @@ class BoxCar:
 # Algorithm TBD, probably either laplacian detection or median clipping
 # for now, just use median clipping
 
-def bam_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
+def bam_cosmics(signal, err_mean, threshold, threshfrac, gain):
     """
     Docstring TBD
     """
@@ -174,11 +181,35 @@ def bam_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
     # label cosmics
     (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))
 
+    
+    #### Discarding cosmics connected to bad pixels
+    
+    N_mask = np.sum(signal.mask)
+    if N_mask == 0:
+        pass
+    else:
+        # reset N_mask
+        N_mask = 0
+        
+        badpix = signal.mask
+        
+        # add bad pixels to the mask and find the connected objects
+        badmask = np.logical_or(mask, badpix)
+        (dilabels, ndilabs) = ndimage.measurements.label(badmask, structure=(np.ones((3,3))))
+        badlabels = np.unique(dilabels[badpix])
+        for l in badlabels:
+            mask[dilabels == l] = 0
+            N_mask += np.sum(dilabels == l)
+        (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))
+    
+    
     # object extraction
     events = ndimage.measurements.find_objects(labels)
 
     signal *= mask
     
+    
+    #### Save the cosmics in a TrackObs
 
     # our output is a TrackObs, containing the cosmic data and several keywords
     output = TrackObs(ntracks)
@@ -198,14 +229,14 @@ def bam_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
         # the event (only for this label)
         cosmic = np.copy(signal[location])
         lab = labels[location]
-        cosmic[lab!=ii] == 0
+        cosmic[lab!=ii+1] = 0
         
         # total energy
         Etot = np.rint((np.sum(cosmic)))
         
         # uncertainty on total energy
         err = np.copy(err_mean[location])
-        err[lab!= ii] == 0
+        err[lab!= ii+1] = 0
         delEtot = np.rint((np.sqrt(np.sum(err**2))))
         
         # turn the cosmic into a flattened array, but save its dimensions
@@ -218,3 +249,147 @@ def bam_cosmics(signal, err_mean, threshold, threshfrac, N_mask, gain):
 
     return output
 
+def bam_cosmics_mended(signal, err_mean, threshold, threshfrac, gain):
+    """
+    Docstring TBD
+    """
+
+    import numpy as np
+    import astroscrappy
+    import scipy.ndimage as ndimage
+    
+    
+    (xmax,ymax) = signal.shape  # for saving, later
+    # construct mask from signal/error
+    SN = signal/err_mean
+    mask = np.zeros(signal.shape)
+    mask[SN > threshold] = 1
+
+    # neighbours
+    mask = mask.astype('bool')
+    
+    mask = astroscrappy.dilate3(mask)
+    mask = np.logical_and(SN > threshold, mask)
+
+    # dilation - do this a few times
+    for ii in range(10):
+        newmask = astroscrappy.dilate3(mask)
+        newmask = np.logical_and(SN > threshfrac*threshold, newmask)
+        if (newmask==mask).all():
+            break
+        else:
+            mask = newmask
+
+    # label cosmics
+    (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))    
+    
+    
+    #### Connecting separated cosmics
+    
+    # Try to reconnect cosmics that have been cut apart, most likely by the fringes
+    # Dilate/Close the mask and make labels again. See what overlaps now, and if they are connected
+    
+    # just dilation
+    connect_mask = ndimage.binary_dilation(mask,structure=(np.ones((3,3))))
+    # erosion by + , instead of just closing
+    connect_mask = ndimage.binary_erosion(connect_mask,structure=(np.array([[0,1,0],[1,1,1],[0,1,0]])))    
+    # alternative: sclosing
+    #connect_mask = ndimage.binary_closing(mask,structure=(np.ones((3,3))))
+    
+    (dilabels, ndilabs) = ndimage.measurements.label(connect_mask, structure=(np.ones((3,3))))
+    
+    # what are the overlaps
+    if ntracks != ndilabs:
+        # if they're the same, nothing changes
+        mappings = []
+        # find out the overlaps
+        for dilab in range(1, ndilabs+1):
+            overlabels = np.unique(labels[dilabels==dilab])
+            mappings.append([l for l in overlabels if l!= 0])
+        # where there are overlaps, try to look for overlooked stuff
+        for il in range(len(mappings)):
+            mp = mappings[il]
+            dilab = il+1
+            if len(mp) == 1:
+                continue
+            else:
+                # mean energies for each track in this label
+                # problem: this can be more than two, so I can't just compare energies and connect
+                mean_e = np.array([np.mean(signal[labels == l]) for l in mp])
+                region = (dilabels == dilab)
+                
+                for ii in range(len(mp)):
+                    # the two here is a parameter, and can be tuned
+                    # I might also only want to add stuff where there are actual overlaps in the labels, though then I'd have to
+                    # be careful about 2-gaps
+                    # maybe reject everything that does not cause a new connection? How?
+                    mask[region] = np.logical_or(mask[region], (np.abs(signal[region] - mean_e[ii])/err_mean[region] < 2))
+        
+        (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))
+    
+    
+    #### Discarding cosmics connected to bad pixels
+    
+    N_mask = np.sum(signal.mask)
+    if N_mask == 0:
+        pass
+    else:
+        # reset N_mask
+        N_mask = 0
+        
+        badpix = signal.mask
+        
+        # add bad pixels to the mask and find the connected objects
+        badmask = np.logical_or(mask, badpix)
+        (dilabels, ndilabs) = ndimage.measurements.label(badmask, structure=(np.ones((3,3))))
+        badlabels = np.unique(dilabels[badpix])
+        for l in badlabels:
+            mask[dilabels == l] = 0
+            N_mask += np.sum(dilabels == l)
+        (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))
+        
+    
+    #### Save the cosmics in a TrackObs
+    
+    # object extraction
+    events = ndimage.measurements.find_objects(labels)
+
+    signal *= mask
+
+    # our output is a TrackObs, containing the cosmic data and several keywords
+    output = TrackObs(ntracks)
+    
+    output.source = "BAM-OBS"
+    output.srcAL = xmax
+    output.srcAC = ymax
+    output.maskpix = N_mask
+    # aqcTime, row, gain and fov need to be retrieved externally
+    
+    # fill the data
+    for ii in range(ntracks):
+        # the location
+        location = events[ii]
+        loc = ((location[0].start, location[1].start))
+        
+        # the event (only for this label)
+        cosmic = np.copy(signal[location])
+        lab = labels[location]
+        cosmic[lab!=ii+1] = 0
+        
+        # total energy
+        Etot = np.rint((np.sum(cosmic)))
+        
+        # uncertainty on total energy
+        err = np.copy(err_mean[location])
+        err[lab!= ii+1] = 0
+        delEtot = np.rint((np.sqrt(np.sum(err**2))))
+        
+        # turn the cosmic into a flattened array, but save its dimensions
+        dim = cosmic.shape
+        cosmic = cosmic.flatten()
+        # cosmics should be gain corrected and turned into ints
+        cosmic = np.rint(cosmic/gain).astype('uint16')
+        
+        output.data[ii] = (cosmic, dim[0], dim[1], loc[0], loc[1], Etot, delEtot)
+
+    return output
