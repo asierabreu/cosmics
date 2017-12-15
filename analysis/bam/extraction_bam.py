@@ -116,12 +116,12 @@ class BoxCar:
         background = np.mean(bkg_src, axis=0)
         
         # extract signal
-        signal = self.patterns[self.i_sig] - background
+        signal = np.copy(self.patterns[self.i_sig]) - background
         
         # no signal in overflow pixels - they get masked
         N_mask = np.sum(self.patterns[self.i_sig].mask.astype("int")) # number of masked pixels
         signal[self.patterns[self.i_sig].mask] = 0
-        signal.mask = self.patterns[self.i_sig].mask
+        signal.mask = np.copy(self.patterns[self.i_sig].mask)
         # perhaps we should also mask all pixels that are saturated (i.e. 65535, in the function before?)
         
         # compute uncertainty
@@ -319,10 +319,7 @@ def bam_cosmics_mended(signal, err_mean, threshold, threshfrac, gain):
                 region = (dilabels == dilab)
                 
                 for ii in range(len(mp)):
-                    # the two here is a parameter, and can be tuned
-                    # I might also only want to add stuff where there are actual overlaps in the labels, though then I'd have to
-                    # be careful about 2-gaps
-                    # maybe reject everything that does not cause a new connection? How?
+                    # the 2 here is a parameter, and can be tuned
                     mask[region] = np.logical_or(mask[region], (np.abs(signal[region] - mean_e[ii])/err_mean[region] < 2))
         
         (labels, ntracks) = ndimage.measurements.label(mask, structure=(np.ones((3,3))))

@@ -45,7 +45,7 @@ class TrackObs:
         obs = cls(ntracks)
         
         # move over the data
-        obs.data["TRACK"] = hdu.data["TRACK"]
+        obs.data["TRACK"] = np.array([t.astype('uint16') for t in hdu.data["TRACK"]]) # needs to be told explicitly here
         obs.data["DIM_AL"] = hdu.data["DIM_AL"]
         obs.data["DIM_AC"] = hdu.data["DIM_AC"]
         obs.data["LOC_AL"] = hdu.data["LOC_AL"]
