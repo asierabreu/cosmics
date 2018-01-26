@@ -96,12 +96,12 @@ class TrackObs:
             # 1 x 4 binning
             pixAL = 10
             pixAC = 120
-            pixdepth = 40
+            pixdepth = 38
         elif self.source == "SM-SIF":
             # 2 x 2 binning
             pixAL = 20
             pixAC = 60
-            pixdepth = 14
+            pixdepth = 12
             
         thetas = np.zeros(len(self.data))
         alphas = np.zeros(len(self.data))
