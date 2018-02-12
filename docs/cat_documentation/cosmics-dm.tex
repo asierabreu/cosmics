@@ -1,0 +1,233 @@
+\documentclass[a4paper, 11pt]{article}
+\usepackage{comment} % enables the use of multi-line comments (\ifx \fi) 
+\usepackage{fullpage} % changes the margin
+\usepackage{blindtext}
+\usepackage{tabularx,colortbl}
+\usepackage{psfig}
+\usepackage{siunitx}
+\usepackage[final]{pdfpages}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{caption} \captionsetup[table]{skip=10pt} 
+\usepackage{vhistory}
+% Define here the Data Model version
+\newcommand{\dmVersion}{v1.0}
+
+\title{A Catalog of Cosmic Ray Detections in Gaia CCDs}
+\author{Prepared by : Christian Kirsch (and Asier Abreu) (ESAC)}
+\date{\parbox{\linewidth}{\centering%
+  \today\endgraf\bigskip\endgraf
+  Document Version : \dmVersion}}
+
+\newpage
+
+\begin{document}
+\maketitle
+\tableofcontents
+\begin{versionhistory}
+  \vhEntry{1.0}{29.10.2017}{A. Abreu}{First Data Model. Initial Definition}
+\end{versionhistory}
+
+\newpage
+\section{Objective}
+\label{sec:objective}
+
+This document describes in detail a relational data model for a catalog of cosmic rays as detected in the Gaia CCDs. 
+
+\section{Background}
+
+\subsection{Intro}
+
+The Gaia cosmic rays catalog is the main output product of particle event detection processing performed at ESAC. This off-line processing is aimed to generate a catalogue of cosmics that allows to analyze the long term behavior of the radiation environment at L2 as seen by Gaia. 
+
+\subsection{Acronyms}
+
+\begin{tabbing}
+$\omega_x,\omega_y,\omega_z$\qquad \= perhaps more\= Definition \kill
+AC \> Across Scan\\
+AL \> Along Scan\\
+AF \> Astrometric Field \\
+SM \> Sky Mapper\\
+BAM \> Basic-Angle Monitoring device\\ 
+CCD \> Charge-Coupled Device \\
+FITS \> Flexible Image Transport System\\   
+FoV \> Field of View\\
+FPA \> Focal-Plane Assembly\\
+OBMT \> On-Board Mission Time\\
+UTC \> Coordinated Universal Time\\
+$^\circ$ \> degree; unit of angle\\
+' \> arcminute, minute of arc; unit of angle\\
+'' \> arcsecond, second of arc; unit of angle\\
+\end{tabbing}
+
+\newpage
+
+\subsection{Conventions}
+
+The following set of definitions and conventions are simply a subset of those (thoroughly) defined in ~\ref{GAIA-CA-SP-ARI-BAS-003}. We have adopted those referring to CCD characteristics and relevant for the present scope.
+
+\subsubsection{Definitions}
+
+\begin{itemize}
+\item A `pixel' is the elementary charge generation and storage element in
+the light-sensitive area of the CCD.
+\item A `column' is the set of all pixels having the same across-scan
+coordinate.
+\item A `line' is the set of all pixels having the same along-scan
+coordinate.
+\item The `summing register' is a special pixel line following
+the light-sensitive pixels. It is used to combine (add or bin) the charges from
+several lines into one.
+\item The `read-out register' is the special pixel line which is used to transfer the accumulated charges from the CCD chip
+into the read-out amplifier (and thus further into the further amplification and
+digitisation electronics).
+\item The `read-out amplifier' is the electronic circuit at the end of the read-out register where the registration and
+pre-amplification of the photoelectric charges takes place.
+\item The `time delay integration' mode (TDI mode) consists of gradually shifting the photoelectric
+charges from ``left'' to ``right''  --- and eventually into the read-out
+register --- to follow moving optical images over the light-sensitive area.
+\item `Gates' are special lines within
+the light-sensitive area. If activated they act like summing registers,
+holding up charges, preventing them from moving along scan in spite
+of the TDI clocking. This causes a compression (summing) of the already
+accumulated TDI images into a single line, and the creation of a new
+``blank'' empty space ``in front of'' this line.
+\end{itemize}
+
+\textit{It would be nice here to add a latex native graphics of the CCD sumarizing all this}
+
+\subsubsection{Reference System}
+Certainly needed.
+\newline
+\newline
+The following image shows the Gaia Focal Plan Array composed of 106 CCDs and the different CCD variants (BAM/AF):
+\newline
+\newline
+\textit{It would be nice here to add here a latex native graphics of the FPA}
+
+\subsection{Data Source}
+
+For the analysis of the cosmic rays in Gaia CCDs we have used a number of different \textit{engineering} datasets. Namely:  
+
+\section{Algorithm Description}
+
+A number of different event detection algorithms have been used for the generation of the catalog. Each algorithm is tailored to the Gaia detector type. Where possible, existing algorithms for cosmic ray detection in CCDs have been used. The following subsections briefly describe the types of algorithms used.
+
+\subsection{Laplacian Edge Detector}
+
+The LA Cosmics algorithm brief description.
+
+\subsection{Median Filtering}
+
+The applied BAM algorithm brief description.
+
+\subsection{Machine Learning Algorithms}
+
+A further possibility to use a DecisionTree classifier for automatic recognition of cosmics rays in the data stream.
+
+\section{Data Model}
+\label{sec:datamodel}
+
+This data model is composed of entities {\it ParticleEvent} which are described in full detail in the following subsection.
+
+\subsection{Data Model Description}
+
+\textbf{Entity Name}:  \textit{ParticleEvent}
+\newline
+\newline
+\textbf{Entity Description}:  A cosmic ray (prompt particle event) detection from any of the analyzed Gaia CCDs 
+\newline
+\newline
+\textbf{Entity Attributes}:
+\newline
+\begin{table}[!h]
+\centering
+\resizebox{\textwidth}{!}{\begin{tabular}{|l|l|l|l|}
+\hline
+{\textit{\textbf{Name}}} & {\textit{\textbf{Description}}} & {\textit{\textbf{Unit}}} & {\textit{\textbf{Type}}} \\ \hline
+TRACK\_START\_POS\_AL & The start position of the event in the AL direction & pixel & Short \\ \hline
+TRACK\_START\_POS\_AC & The start position of the event in the AC direction & pixel & Short \\ \hline
+TRACK\_LEN\_AL & Event track length in AL & pixel & Short \\ \hline
+TRACK\_LEN\_AC & Event track length in AC & pixel & Short \\ \hline
+TRACK\_EN & Event track total energy  & electrons & Integer \\ \hline
+TRACK\_EN\_ERR & Uncertainty in the event track total energy  & electrons & Integer \\ \hline
+TRACK\_TRUNCATED & Is the event truncated by start/end of CCD physical area & NA & Boolean \\ \hline
+EST\_PART\_LEN & Estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+EST\_PART\_LEN\_ERR & Uncertainty in the estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+EST\_PART\_THETA & Estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
+EST\_PART\_THETA\_ERR & Uncertainty in the estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
+\end{tabular}}
+\caption{Event detection data model version \dmVersion}
+\end{table}
+
+% Questions:
+% - users may also be interested in track lengths in SI units, e.g. micrometers
+% - will we provide extra info on the binning for individual data products, or give the pixel coordinates of the samples (which implicitly include the binning)?
+% - are angles already with respect to some external reference e.g. the sun? We may need two angles for a full description (angle of focal plane wrt sun AND angle of the cosmic on the focal plane)
+% the focal plane to sun angle will be interesting in any case during solar flares, as this should lead to an additional modulation in flux
+% should TRACK_EN be in keV? the conversion is a constant (pair production energy in SI)
+% I suppose EST_PART_EN would be for protons?
+
+\subsection{Event Track Reconstruction}
+
+We should describe here (TBD if needed) a simple way to reconstruct the window for a given detection from the provided data.
+
+\section{Persistence Considerations}
+\label{sec:persist}
+\subsection{Persistence Method(s)}
+
+We should describe here the proposed persistence methods (different alternatives file system based or database), with pros and cons.
+
+\subsection{Size Estimations}
+
+Catalog size estimation is a function of :
+\begin{enumerate}
+\item The technology used for the generation of this catalog. 
+\item The persistence format or system used for storage.
+\end{enumerate}
+
+Detection algorithms have been developed and written in Python and the default persistence method adopted is TBD. This results in the following estimations.
+\newline
+\newline
+\textbf{Note:} the following estimations are applicable to catalog version : \dmVersion  
+\newline
+\newline
+
+Assuming an average event rate (in the absence of solar activity) of : 5 events/s , the average volume of the catalog per spacecraft revolution is : x bytes. Since Gaia performs 4 full revs on it's spin axis every 24 hrs, the average catalog volume per 24 hrs is : y bytes. This needs then to be multiplied by the total nb of mission days covered by the corresponding version of the catalog. 
+
+\subsection{Long Term Preservation}
+
+\section{Quality Control Metrics}
+\label{sec:metrics}
+Every run of the batch processing cosmic ray detection algorithms shall generate a new version of the catalog. The corresponding version of the catalog will be quality control checked prior to it's official release.
+
+\subsection{Internal Consistency Checks}
+
+\subsection{External Consistency Checks}
+
+\section{Catalog Release Mechanism}
+\label{sec:release}
+\subsection{Catalog Version Generation}
+
+The proposed catalog versioning scheme is as follows: \newline\newline  \textit{vN.m} \newline\newline where 
+
+\begin{itemize}
+\item \textit{N} is a \textit{major} version of the catalog, only updated due to schema updates (i.e, new attributes added or modifications to existing attributes).
+\item \textit{m} is a \textit{minor} version of the catalog updated when a new batch processing is performed \textbf{after} algorithmic or software updates. 
+\item executions of a new batch processing with no software or algorithm updates but over an increased mission time range result in the increment of the \textit{minor} version of the catalog.
+
+\end{itemize}
+
+Every new version of the catalog (major or minor) will be quality control checked prior to it's official release, according to the criteria described in section~\ref{sec:metrics}.
+
+\subsection{Release Mechanism and Notification to Users}
+
+This is TBD.
+
+
+\begin{thebibliography}{9}
+\bibitem{GAIA-CA-SP-ARI-BAS-003} U. Bastian \emph{Reference Systems, Conventions And Notations for Gaia}.
+
+\end{thebibliography}
+
+\end{document}
