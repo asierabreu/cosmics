@@ -8,26 +8,39 @@ from astropy.io import fits
 ### energies
 
 
-def fits_energies_edgeless(filenames):
+def fits_energies_edgeless(filenames, row=-1,fov=-1):
     """
     Extract deposited energies from a list of fits files of TrackObs
     Returns:
     - An array of acqTimes [OBMT] 
     - A list of energy arrays [eV] - one array per acqTime
     - A list boolean arrays for each acqTime, which are TRUE when a cosmic is at the edge of the image.
+    
+    Setting row and/or fov to a value greater than 0 filters the input arrays
     """
     # Create output lists
     acqTimes = []
     energies = []
     rejected = []
+    
+    # if the input is not a list, it has to be a single filename
+    if type(filenames) != type([]):
+        filenames = [filenames]
+    
     for filename in filenames:
         # Open the file
         hdulist = fits.open(filename)
         
         # Iterate over all the TrackObs
         for ii in range(1,len(hdulist),1):
-            head = hdulist[ii].header        
-
+            head = hdulist[ii].header
+            
+            # filter if necessary
+            if fov > 0:
+                if head["FOV"] != fov: continue
+            if row > 0:
+                if head["CCD_ROW"] != row: continue
+                    
             # write acquisition time
             acqTimes.append(head["ACQTIME"])
 
@@ -75,16 +88,22 @@ def concatenate_reject_energies(e_in, rej, indices):
 
 ### fluxes
 
-def fits_flux(filenames):
+def fits_flux(filenames, row=-1, fov=-1):
     """
     Extract fluxes from a list of fits files of TrackObs
     Returns an array of acqTimes [OBMT] the number of particles, fluxes [parts/cm^2/s] and the poissonian uncertainty
+    
+    Setting row and/or fov to a value greater than 0 filters the input arrays
     """
     # Create lists for OBMT and fluxes
     acqTimes = []
     nparts = []
     fluxes = []
     errs = []
+    
+    # if the input is not a list, it has to be a single filename
+    if type(filenames) != type([]):
+        filenames = [filenames]
     
     # iterate over files
     for filename in filenames:
@@ -94,7 +113,13 @@ def fits_flux(filenames):
         # Iterate over all the track-observations
         for ii in range(1,len(hdulist),1):
             head = hdulist[ii].header        
-
+            
+            # filter if necessary
+            if fov > 0:
+                if head["FOV"] != fov: continue
+            if row > 0:
+                if head["CCD_ROW"] != row: continue
+                    
             maskpix = head["MASKPIX"]
             srcAL = head["SRC_AL"]
             srcAC = head["SRC_AC"]

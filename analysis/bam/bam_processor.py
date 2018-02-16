@@ -1,10 +1,10 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../TrackObs/'))
+sys.path.insert(0, os.path.abspath('../../lib/TrackObs/'))
 from TrackObs import *
-sys.path.insert(0, os.path.abspath('../PythonGbinReader/GbinReader/'))
+sys.path.insert(0, os.path.abspath('../../lib/PythonGbinReader/GbinReader/'))
 import gbin_reader
-sys.path.insert(0, os.path.abspath('../astroscrappy/'))
+sys.path.insert(0, os.path.abspath('../../lib/astroscrappy/'))
 import astroscrappy
 
 
