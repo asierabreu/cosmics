@@ -328,33 +328,282 @@ The extraction algorithm for this dataset is then (for each region seperately):
 
 All steps until the calculation of the signal are the same as in \cite{GAIA-DE-TN-ESAC-RKO-033}, which only returned the signal images.
 
+\subsubsection{Extraction Pipeline}
 \subsection{Post-Processing}
 
 \subsubsection{Observed Flux}
 
+One of the first -- and most simple -- data products that can be derived from a TrackObs is the flux measured per observation. The calculation of a flux is in this case very simple: Given an exposed CCD area $A_\mathrm{exp}$ and exposure time $T_\mathrm{exp}$ the flux is simply calculated as
+
+\begin{equation*}
+  F = \frac{\mathrm{Counts}}{A_\mathrm{exp} \cdot T_\mathrm{exp}}
+\end{equation*}
+
+In the following, we determine these values for SM-SIF and BAM observations, whose computation are not trivial due to the use of TDI (and in the latter case, staring) observations and the size of the used AL readout windows relative to the physical CCD size.
+
+For our calculations: A Gaia CCD is segmented into 4500 pixels in AL direction and 1980 pixels in AC direction - of these, 14 pixels are in the pre-scan region and not used. Pixels are $10 \times 30\, \mathrm{\mu m}$ (AL $\times$ AC) and TDI transfer time is $T_\mathrm{TDI} = 0.9828\, \mathrm{ms/pixel}$, so the effective CCD exposure time is 4.4226\,s.
+
+\paragraph{SM-SIF \\}
+
+The readout of the SM-SIF images are a continuous readout of the signal acquired from TDI (see also Fig. \ref{fig:SM_Acq}). To avoid saturation from bright stars, Gate 12 is permanently activated, leading to a readout of only the last 2900 CCD lines in AL. Pixels are then binned to a factor of 2 in both AL and AC.
+
+\begin{figure}[h]
+  \centering
+  {\Huge TIKZ PLACEHOLDER}
+%  \begin{tikzpicture}[scale=1]
+%
+%    % Part 1: A physical image of the CCD, with gate 12
+%    \node(scope1){
+%      \begin{tikzpicture} 
+%        \draw[thick] (0,0) rectangle (1.5,3); % box
+%        \draw[thick,blue] (0.53,-0.2) -- (0.53,3.2); % Line for gate 12
+%        \draw[thick,red] (1.5,0) -- (1.5,3); % Readout
+%        \draw[thick,-{Latex[length=8pt]}] (0.6,1.5) to (1.4,1.5);
+%        
+%        \node[blue] at (0.3,3.4) {Gate 12}; % Marker for gate 12
+%        \node[red] at (1.8,-0.3) {Readout}; % Marker for Readout
+%        \node at (1,1.8) {TDI}; % Marker for Readout
+%
+%
+%      \end{tikzpicture} 
+%    };
+%
+%    % Part 2: The output image
+%    \node[at={($(scope1.east)+(.1cm,0)$)},anchor=west](scope2){
+%      \begin{tikzpicture} 
+%        % the box around it
+%        \draw[thick, fill] (0,0) rectangle (5,3);
+%
+%        % A few stars
+%        \node[star,star points=4, star point height=.7cm, draw, fill=white] at (1,1) {};
+%        \node[star,star points=4, star point height=.1cm, draw, fill=white] at (4,2) {};
+%        \node[star,star points=4, star point height=.1cm, draw, fill=white] at (.5,2.5) {};
+%
+%        % And some cosmics
+%        \draw[thick,white] (3.5,2) -- (3,1.5) (1.2,2.5) -- (1.3,2)
+%                           (4,0.2) -- (4.5,0.3);
+%      \end{tikzpicture} 
+%    };
+%
+%    % a big arrow between them
+%    \draw[red, ultra thick,-{Stealth[length=.5cm, width=.7cm]}] ($(scope1.east) + (-1cm,0)$)  to ($(scope2.west)$);
+%
+%  \end{tikzpicture}
+  \caption{Scheme of an SM acquisition. The CCD area of each chip after Gate 12 is continuously read out via TDI (left). The resulting image (right) has the same dimension in AC but a dimension in AL dependent on the duration of the readout.}
+  \label{fig:SM_Acq}
+\end{figure}
+
+
+For clarity in notation, I will, from now on, use the following terms:
+\begin{itemize}
+  \item A \textbf{CCD pixel} refers to a physical pixel on the actual CCD - i.e. one physical unit of $10 \times 30\, \mathrm{\mu m}$
+  \item An \textbf{image pixel} refers to a pixel in the image recorded after the TDI scan. While it still carries spatial information in AC, its AL information is a result of the integration over the sampled region in AL - it encodes time and location. Thus, an image pixel does not correspond to a single physical pixel, but rather the history of an entire AL line during TDI.
+\end{itemize}
+
+
+The resulting image, then, consists of 983 image pixels in AC and a variable number $N_\mathrm{AL}$ of image pixels in AL - depending on the time over which data has been recorded (which is $T_\mathrm{rec} = T_\mathrm{TDI} \cdot 2 N_\mathrm{AL}$).
+
+From a physical pixel perspective, each CCD pixel has been exposed for the time $T_\mathrm{rec}$, with the information of individual exposures spread over different image pixels in AL. The exposed area corresponds to that of 2900 $\times$ 1966 physical pixels.
+
+From an image pixel perspective, each pixel has been exposed for exactly $T_\mathrm{TDI} \cdot 2900$, regardless of $N_\mathrm{AL}$. The physical area of each image pixel corresponds to that of 4 physical pixels, due to binning.
+
+As one can tell from the above, the physical perspective has a lower number of pixels, but a higher exposure time per pixel (assuming $2 N_\mathrm{AL} > 2900$). The image perspective has more pixels, but lower exposure times. Irregardless of the perspective, the product $A_\mathrm{exp} \cdot T_\mathrm{exp}$ -- which is of interest for computing fluxes -- is always the same, being
+
+\begin{align*}
+  \mathrm{Physical: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} &= \left(2900 \cdot 1966 \cdot 10\,\mu m \cdot 30\,\mu m\right) \cdot \left( T_\mathrm{TDI} \cdot 2 N_\mathrm{AL} \right)\\
+  \mathrm{Image: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} &= \left(N_\mathrm{AL} \cdot 893 \cdot 4 \cdot 10\,\mu m \cdot 30\,\mu m\right) \cdot \left( T_\mathrm{TDI} \cdot 2900 \right)\\
+  &= 33.62 ~ \left(\frac{N_\mathrm{AL}}{1000}\right)\,\mathrm{cm^{2}\,s}
+\end{align*}
+
+Going forward, we will use the image perspective, as it is consistent with prior studies of the BAM image and more useful for the next section. It is also, as we'll see later, easier to treat masked pixels. Nevertheless, for the calculation of fluxes, both perspectives are equivalent.
+
+\paragraph{BAM-OBS and BAM-SIF}
+
+For the BamObservations, pixels are binned by a factor of 4 in AC and not binned at all in AL.
+
+The determination of an exposure time in both pictures for the BamObservations is complicated by the fact that it is not only a TDI observation, but also contains a period of staring. Normally, the BAM CCD is operated in TDI mode, in the same way as the SM CCD. To record the interference pattern, an exception is made -- for an integration time of 19\,s, the shifting of charges is stopped, and the chip operates in a kind of staring mode. In nominal BamObservations, data is then only aquired from sub-regions of the CCD that have been illuminated by the BAM pattern. BAM-SIF images use the entire CCD in AL direction along a restricted AC range.
+
+\begin{figure}[h]
+  \centering
+  {\Huge TIKZ PLACEHOLDER}
+%  \begin{tikzpicture}[scale=1]
+%%    % Begin with one node ecompassing everything
+%%    \node[anchor=south west,inner sep=0,minimum width=\textwidth, minimum height=4cm] (image) at (0,0) {};
+%%      \begin{scope}[x={(image.south east)},y={(image.north west)}]
+%%
+%%      \end{scope}
+%
+%    % Draw five scopes, each corresponding to one box
+%    % Each box should also contain the bam patterns!
+%
+%    % Box 1: Create the readout windows
+%    \node(scope1){
+%      \begin{tikzpicture} 
+%        \node at (-0.3,3) {a)};
+%        \draw[thick] (0,0) rectangle (1.5,3); % box
+%        \draw[red,opacity=0.5, fill] (0.75,2) circle (0.2);   % pattern1
+%        \draw[red,opacity=0.5, fill] (0.75,1) circle (0.2);   % pattern1
+%
+%        % readout windows
+%        \draw[thick,darkgreen,dashed] (0,1.7) -- (-0.3,1.7) -- (-0.3,2.3) -- (0,2.3);
+%        \draw[thick,darkgreen] (0,1.7) -- (0.3,1.7) -- (0.3,2.3) -- (0,2.3);
+%
+%        \draw[thick,blue,dashed] (0,0.7) -- (-0.3,0.7) -- (-0.3,1.3) -- (0,1.3);
+%        \draw[thick,blue] (0,0.7) -- (0.3,0.7) -- (0.3,1.3) -- (0,1.3);
+%      \end{tikzpicture} 
+%    };
+%
+%    % Box 2: Move the readout windows
+%    \node[at={($(scope1.east)+(.6cm,0)$)},anchor=west](scope2){
+%      \begin{tikzpicture} 
+%        \node at (-0.6,3) {b)};
+%        \draw[thick] (0,0) rectangle (1.5,3);
+%        \draw[red,opacity=0.5, fill] (0.75,2) circle (0.2);   % pattern1
+%        \draw[red,opacity=0.5, fill] (0.75,1) circle (0.2);   % pattern1
+%
+%        % readout windows
+%        \draw[thick,darkgreen] (0.1,1.7) rectangle (0.7,2.3);
+%        \draw[thick,blue] (0.1,0.7) rectangle (0.7,1.3);
+%      \end{tikzpicture} 
+%    };
+%
+%    % Box 3: Stare
+%    \node[at={($(scope2.east)+(.6cm,0)$)},anchor=west](scope3){
+%      \begin{tikzpicture} 
+%        \node at (-0.6,3) {c)};
+%        \draw[thick] (0,0) rectangle (1.5,3);
+%        \draw[red,opacity=0.5, fill] (0.75,2) circle (0.2);   % pattern1
+%        \draw[red,opacity=0.5, fill] (0.75,1) circle (0.2);   % pattern1
+%
+%        % readout windows
+%        \draw[thick,darkgreen] (0.45,1.7) rectangle (1.05,2.3);
+%        \draw[thick,blue] (0.45,0.7) rectangle (1.05,1.3);
+%
+%      \end{tikzpicture} 
+%    };
+%
+%    % Box 4: Move again
+%    \node[at={($(scope3.east)+(.6cm,0)$)},anchor=west](scope4){
+%      \begin{tikzpicture} 
+%        \node at (-0.6,3) {d)};
+%        \draw[thick] (0,0) rectangle (1.5,3);
+%        \draw[red,opacity=0.5, fill] (0.75,2) circle (0.2);   % pattern1
+%        \draw[red,opacity=0.5, fill] (0.75,1) circle (0.2);   % pattern1
+%
+%        % readout windows
+%        \draw[thick,darkgreen] (0.8,1.7) rectangle (1.4,2.3);
+%        \draw[thick,blue] (0.8,0.7) rectangle (1.4,1.3);
+%
+%      \end{tikzpicture} 
+%    };
+%
+%    % Box 5: Readout 
+%    \node[at={($(scope4.east)+(.6cm,0)$)},anchor=west](scope5){
+%      \begin{tikzpicture} 
+%        \node at (-0.6,3) {e)};
+%        \draw[thick] (0,0) rectangle (1.5,3);
+%        \draw[red,opacity=0.5, fill] (0.75,2) circle (0.2);   % pattern1
+%        \draw[red,opacity=0.5, fill] (0.75,1) circle (0.2);   % pattern1
+%
+%        % readout windows
+%        \draw[thick,darkgreen,dashed] (1.5,1.7) -- (1.8,1.7) -- (1.8,2.3) -- (1.5,2.3);
+%        \draw[thick,darkgreen] (1.5,1.7) -- (1.2,1.7) -- (1.2,2.3) -- (1.5,2.3);
+%
+%        \draw[thick,blue,dashed] (1.5,0.7) -- (1.8,0.7) -- (1.8,1.3) -- (1.5,1.3);
+%        \draw[thick,blue] (1.5,0.7) -- (1.2,0.7) -- (1.2,1.3) -- (1.5,1.3);
+%
+%      \end{tikzpicture} 
+%    };
+%
+%  \end{tikzpicture}
+  \caption{Readout scheme for a BAM pattern in BAM-OBS. BAM fringe patterns are outlined as red circles. a) Create the readout windows. b) Move the readout windows via TDI. c) Stare observation -- charges are not shifted. d) Move readout windows via TDI. e) Readout, recording only contents of windows.}
+  \label{fig:BAM_Acq}
+\end{figure}
+
+The observation principle and the effect on imaging particle tracks is shown in Fig. \ref{fig:BAM_Acq}. Effectively, data is collected from two windows, outlined in green and blue. These two windows have an unbinned length of 1000 in AL and 320 in AC each. They first move across the chip, stay in place during the staring, and then move again to the readout register.
+
+In BAM-SIF observations, we can make a similar estimation of the readout window sizes, although the image dimensions are variable. We will from now on use two values $N_\mathrm{AL}$ and $N_\mathrm{AC}$ to refer to the binned image dimensions of the result image. The used unbinned lengths are then $N_\mathrm{AL}$ and $4\, N_\mathrm{AC}$, respectively -- for reference, a nominal BamObservation has $N_\mathrm{AL} = 1000$ and $N_\mathrm{AC} = 80$
+
+The exposure can once again be viewed in two pictures, the physical pixel and image pixel based ones. In the former, it is easy to see that the entire region both readout windows cross are exposed -- the exposed area is 4500 $\times$ $4\, N_\mathrm{AC}$ pixels (AL $\times$ AC) per pattern. The exposure time, however, is more complex: First, the entire exposed region is exposed for $N_\mathrm{AL} \times T_\mathrm{TDI}$, due to the movement of the readout windows across the chip. Additionally, the region used for staring is observed for a further 19 s. The exposure time is, as such, AL-dependent.
+
+In the image picture, the calculation is much easier. Viewing each readout window as a physical unit, the exposed area per window is simply $N_\mathrm{AL}$ $\times$ $4\, N_\mathrm{AC}$ pixels. The exposure time is simply the TDI transfer time across the whole chip plus the staring time.
+
+The product of exposed area and exposure time, which is of interest for flux determination, is in both pictures (per readout window)
+
+\begin{align*}
+  \mathrm{Physical: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} = &\left(4500 \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m \right) \cdot \left( N_\mathrm{AL}\ \cdot T_\mathrm{TDI} \right) \\+ &\left( N_\mathrm{AL} \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m\right) \cdot \left( 19\,s \right)\\
+  \mathrm{Image: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} = &\left( N_\mathrm{AL} \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m\right) \cdot \left(4500\, T_\mathrm{TDI} + 19\,s \right)\\
+  = &22.49\,\mathrm{cm^{2}\,s} ~~~\mathrm{(for~BAM\!\!-\!\!OBS)}.
+\end{align*}
+
+As the computation is more simple in the image picture, we will from now on use this picture.
+
+\paragraph{Masked Pixels\\}
+
+In both SM and BAM images, some image pixels can not be used for the determination of cosmics. In the SM, these pixels are mostly caused by the bright star masking algorithm. For the BAM, charge overflow effects can be caused by a high energy cosmics coincident with an interference fringe, fully saturating the pixel and causing errors in the readout of several following pixels.
+
+Correcting the exposed area for these masked pixels is very easy in the image picture, as we simply discard these pixels, meaning one can calculate the exposed area using
+
+\begin{equation*}
+  A_\mathrm{exp} = (N_\mathrm{tot} - N_\mathrm{mask}) \cdot b_\mathrm{AL} \cdot b_\mathrm{AC} \cdot 10 \cdot 30 \, \mu m^{2}
+\end{equation*}
+
+With $N_\mathrm{tot}$ being the total number of image pixels, $N_\mathrm{mask}$ being the number of masked pixels and $b_\mathrm{AL}$ and $b_\mathrm{AC}$ being the binning factor in AL and AC, respectively.
+
+
 \subsubsection{Track Geometries}
+
+For Particle tracks covering a significant amount of pixels, it is possible to estimate the the orientation and the length of the particle track for the purposes of future analysis.
 
 \subsubsection{Flagging Special Tracks}
 
 i.e. those at the edge of the readout windows. Maybe also the removal of tracks at obviously too low energies?
 
 
+\subsubsection{Post-Processing Pipeline}
 \section{Data Model}
 \label{sec:datamodel}
 
-{\textbf DEPRECATED}
-
-This data model is composed of entities {\it ParticleEvent} which are described in full detail in the following subsection.
+This data model is composed of entities {\it CosmicObservation} which are described in full detail in the following subsection.
 
 \subsection{Data Model Description}
 
-\textbf{Entity Name}:  \textit{ParticleEvent}
+\textbf{Entity Name}:  \textit{CosmicObservation}
 \newline
 \newline
-\textbf{Entity Description}:  A cosmic ray (prompt particle event) detection from any of the analyzed Gaia CCDs 
+\textbf{Entity Description}:  A table of cosmic ray (prompt particle event) detections from any of the analyzed Gaia CCDs 
 \newline
 \newline
-\textbf{Entity Attributes}:
+
+
+\textbf{Entity Header}:
+\newline
+\begin{table}[!h]
+\centering
+\resizebox{\textwidth}{!}{\begin{tabular}{|l|l|l|l|}
+\hline
+{\textit{\textbf{Name}}} & {\textit{\textbf{Description}}} & {\textit{\textbf{Unit}}} & {\textit{\textbf{Type}}} \\ \hline
+SOURCE & Descriptor of the type of source observation & NA & String \\ \hline
+CCD\_ROW & CCD row of the source chip & NA & Short \\ \hline
+FOV & FOV of the source chip & NA & Short \\ \hline
+ACQTIME & Source acquisition time & OBMT & Integer \\ \hline
+SRC\_AL & AL-dimension of the source image  & pixels & Short \\ \hline
+SRC\_AC & AC-dimension of the source image  & pixels & Short \\ \hline
+BINNING ? & Source binning &  & Short \\ \hline
+MASKPIX & Number of masked pixels in the source image & pixels & Short \\ \hline
+GAIN ? & Source image gain & e-/ADU & Float \\ \hline
+EST\_FLUX & Estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
+EST\_FLUX\_ERR & Poisson Uncertanty of estimated particle flux & particles\,cm${^-2}$\,s${^-1}$ & Float \\ \hline
+SC\_POS\_X & Spacecraft X position in corotating coordinate system & m & Float \\ \hline
+SC\_POS\_Y & Spacecraft Y position in corotating coordinate system & m & Float \\ \hline
+SC\_POS\_Z & Spacecraft Z position in corotating coordinate system & m & Float \\ \hline
+SUN\_ASPECT\_ANGLE & Spacecraft sun aspect angle & deg & Float \\ \hline
+\end{tabular}}
+\caption{Event detection table header version \dmVersion}
+\end{table}
+
+
+\textbf{Entity Columns}:
 \newline
 \begin{table}[!h]
 \centering
@@ -363,17 +612,18 @@ This data model is composed of entities {\it ParticleEvent} which are described 
 {\textit{\textbf{Name}}} & {\textit{\textbf{Description}}} & {\textit{\textbf{Unit}}} & {\textit{\textbf{Type}}} \\ \hline
 TRACK\_START\_POS\_AL & The start position of the event in the AL direction & pixel & Short \\ \hline
 TRACK\_START\_POS\_AC & The start position of the event in the AC direction & pixel & Short \\ \hline
-TRACK\_LEN\_AL & Event track length in AL & pixel & Short \\ \hline
-TRACK\_LEN\_AC & Event track length in AC & pixel & Short \\ \hline
+TRACK\_DIM\_AL & Event track dimension in AL & pixel & Short \\ \hline
+TRACK\_DIM\_AC & Event track dimension in AC & pixel & Short \\ \hline
+TRACK\_PIX ?& Number of detected pixels & pixels & Short \\ \hline
 TRACK\_EN & Event track total energy  & electrons & Integer \\ \hline
 TRACK\_EN\_ERR & Uncertainty in the event track total energy  & electrons & Integer \\ \hline
 TRACK\_TRUNCATED & Is the event truncated by start/end of CCD physical area & NA & Boolean \\ \hline
-EST\_PART\_LEN & Estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
-EST\_PART\_LEN\_ERR & Uncertainty in the estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+EST\_TRACK\_LEN & Estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+EST\_TRACK\_LEN\_ERR & Uncertainty in the estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
 EST\_PART\_THETA & Estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
 EST\_PART\_THETA\_ERR & Uncertainty in the estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
 \end{tabular}}
-\caption{Event detection data model version \dmVersion}
+\caption{Event detection table version \dmVersion}
 \end{table}
 
 % Questions:
