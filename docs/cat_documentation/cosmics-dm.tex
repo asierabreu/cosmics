@@ -587,17 +587,12 @@ SOURCE & Descriptor of the type of source observation & NA & String \\ \hline
 CCD\_ROW & CCD row of the source chip & NA & Short \\ \hline
 FOV & FOV of the source chip & NA & Short \\ \hline
 ACQTIME & Source acquisition time & OBMT & Integer \\ \hline
+ACQDATE & Source acquisition time & UTC & String \\ \hline
 SRC\_AL & AL-dimension of the source image  & pixels & Short \\ \hline
 SRC\_AC & AC-dimension of the source image  & pixels & Short \\ \hline
-BINNING ? & Source binning &  & Short \\ \hline
 MASKPIX & Number of masked pixels in the source image & pixels & Short \\ \hline
-GAIN ? & Source image gain & e-/ADU & Float \\ \hline
-EST\_FLUX & Estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
-EST\_FLUX\_ERR & Poisson Uncertanty of estimated particle flux & particles\,cm${^-2}$\,s${^-1}$ & Float \\ \hline
-SC\_POS\_X & Spacecraft X position in corotating coordinate system & m & Float \\ \hline
-SC\_POS\_Y & Spacecraft Y position in corotating coordinate system & m & Float \\ \hline
-SC\_POS\_Z & Spacecraft Z position in corotating coordinate system & m & Float \\ \hline
-SUN\_ASPECT\_ANGLE & Spacecraft sun aspect angle & deg & Float \\ \hline
+FLUX & Estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
+FLUX\_ERR & Poisson Uncertanty of estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
 \end{tabular}}
 \caption{Event detection table header version \dmVersion}
 \end{table}
@@ -610,18 +605,19 @@ SUN\_ASPECT\_ANGLE & Spacecraft sun aspect angle & deg & Float \\ \hline
 \resizebox{\textwidth}{!}{\begin{tabular}{|l|l|l|l|}
 \hline
 {\textit{\textbf{Name}}} & {\textit{\textbf{Description}}} & {\textit{\textbf{Unit}}} & {\textit{\textbf{Type}}} \\ \hline
-TRACK\_START\_POS\_AL & The start position of the event in the AL direction & pixel & Short \\ \hline
-TRACK\_START\_POS\_AC & The start position of the event in the AC direction & pixel & Short \\ \hline
-TRACK\_DIM\_AL & Event track dimension in AL & pixel & Short \\ \hline
-TRACK\_DIM\_AC & Event track dimension in AC & pixel & Short \\ \hline
-TRACK\_PIX ?& Number of detected pixels & pixels & Short \\ \hline
+LOC\_AL & The start position of the event in the AL direction & pixels & Short \\ \hline
+LOC\_AC & The start position of the event in the AC direction & pixels & Short \\ \hline
+DIM\_AL & Event track dimension in AL & pixels & Short \\ \hline
+DIM\_AC & Event track dimension in AC & pixels & Short \\ \hline
+TRACK\_NPIX& Number of detected pixels & pixels & Short \\ \hline
 TRACK\_EN & Event track total energy  & electrons & Integer \\ \hline
 TRACK\_EN\_ERR & Uncertainty in the event track total energy  & electrons & Integer \\ \hline
 TRACK\_TRUNCATED & Is the event truncated by start/end of CCD physical area & NA & Boolean \\ \hline
-EST\_TRACK\_LEN & Estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
-EST\_TRACK\_LEN\_ERR & Uncertainty in the estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
-EST\_PART\_THETA & Estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
-EST\_PART\_THETA\_ERR & Uncertainty in the estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
+GEOMETRY\_VALID & Is the track geometry (following rows LEN, THETA) applicable?  & NA & Boolean \\ \hline
+TRACK\_LEN & Estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+TRACK\_LEN\_ERR & Uncertainty in the estimated incident particle track length (if applicable) & $\mu$m & Float \\ \hline
+TRACK\_THETA & Estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
+TRACK\_THETA\_ERR & Uncertainty in the estimated incident particle impact angle (if applicable) & deg & Float \\ \hline
 \end{tabular}}
 \caption{Event detection table version \dmVersion}
 \end{table}

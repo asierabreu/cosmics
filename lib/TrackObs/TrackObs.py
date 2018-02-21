@@ -83,8 +83,10 @@ class TrackObs:
             exptime = 2.9 * 0.9828
             
         exparea = pixAL*pixAC*(self.srcAL*self.srcAC - self.maskpix)
-        
-        return len(self.data)/exparea/exptime
+        flux = len(self.data)/exparea/exptime
+        del_flux = np.sqrt(len(self.data))/exparea/exptime
+        return flux, del_flux
+    
     
     def track_geometries(self):
         """VERY PRELIMINARY!

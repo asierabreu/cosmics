@@ -29,13 +29,18 @@ def read_flux_external(filenames):
 def OBMT_apyTime(obmt_in):
     """Assign a given OBMT to astropy time objects"""
     from astropy.time import Time
-    # reference time: UNIX and OBMT at 2014-01-01T00:00:00
-    unix_ref = 1393445605
-    obmt_ref = 10454400000000000
-    
+    obmt_reset = 10454403208162998
+    if obmt_in >= obmt_reset:
+        # reference time: UNIX and OBMT at 2014-02-26T20:13:25 UTC
+        unix_ref = 1393445605
+        obmt_ref = obmt_reset
+    else:
+        # reference time: UNIX and OBMT at 2014-01-01T00:00:00 UTC
+        unix_ref = 1388534400.0
+        obmt_ref = 5280428890394081
+        
     unix_out = unix_ref + (obmt_in - obmt_ref)/1e9
     
-    out = Time(unix_out, format='unix')
-    out.format = 'isot' # may not matter
+    out = Time(unix_out, format='unix',scale='utc')
     
     return out

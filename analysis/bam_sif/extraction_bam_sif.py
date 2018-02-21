@@ -62,10 +62,9 @@ def bam_sif_cosmics(signal, err_sig, threshold, threshfrac, N_mask, gain, acqTim
     Docstring TBD. Essentially a specialized wrapper around bam_cosmics from bam extraction. Returns TWO trackobs
     """
     # Get the cosmics via BAM cosmics
-    # TODO use separate N_mask - probably 2-length array
-    out1 = bam_cosmics(signal[:,:80], err_sig[:,:80], threshold, threshfrac, N_mask, gain)
-    # fov 2 does not use all the field - I may want to make this a parameter above
-    out2 = bam_cosmics(signal[:,80:140], err_sig[:,80:140], threshold, threshfrac, N_mask, gain)
+    out2 = bam_cosmics(signal[:,:80], err_sig[:,:80], threshold, threshfrac, N_mask, gain)
+    # fov 1 does not use all the field - I may want to make this a parameter above
+    out1 = bam_cosmics(signal[:,80:140], err_sig[:,80:140], threshold, threshfrac, N_mask, gain)
     
     # Modify the outputs
     for output in [out1,out2]:
