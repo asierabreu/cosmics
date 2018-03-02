@@ -17,14 +17,25 @@ def OBMT_apyTime(obmt_in):
     """Assign a given OBMT to astropy time objects"""
     from astropy.time import Time
     obmt_reset = 10454403208162998
-    if obmt_in >= obmt_reset:
-        # reference time: UNIX and OBMT at 2014-02-26T20:13:25 UTC
-        unix_ref = 1393445605
-        obmt_ref = obmt_reset
+    
+    if type(obmt_in) == np.ndarray:
+        unix_ref = np.zeros(obmt_in.shape)
+        obmt_ref = np.zeros(obmt_in.shape)
+        
+        unix_ref[obmt_in >= obmt_reset] = 1393445605
+        obmt_ref[obmt_in >= obmt_reset] = obmt_reset
+        
+        unix_ref[obmt_in < obmt_reset] = 1388534400.0
+        obmt_ref[obmt_in < obmt_reset] = 5280428890394081
     else:
-        # reference time: UNIX and OBMT at 2014-01-01T00:00:00 UTC
-        unix_ref = 1388534400.0
-        obmt_ref = 5280428890394081
+        if obmt_in >= obmt_reset:
+            # reference time: UNIX and OBMT at 2014-02-26T20:13:25 UTC
+            unix_ref = 1393445605
+            obmt_ref = obmt_reset
+        else:
+            # reference time: UNIX and OBMT at 2014-01-01T00:00:00 UTC
+            unix_ref = 1388534400.0
+            obmt_ref = 5280428890394081
         
     unix_out = unix_ref + (obmt_in - obmt_ref)/1e9
     
@@ -437,3 +448,30 @@ def write_list_to_fits(cobslist, fname):
     
     hdulist.writeto(fname)
     hdulist.close()
+
+
+def read_CosObs_fits(fnames,row=-1,fov=-1):
+    """
+    Given a single filename or list of fits filenames, read CosmicObservations from the fits file(s)
+    Returns a list of CosmicObservations
+    """
+    
+    if type(fnames) == type(''):
+        # it's a single string
+        fnames = [fnames]
+    
+    obslist = []
+    for infile in fnames:
+        hdulist = fits.open(infile)
+
+        for ii in range(1,len(hdulist)):
+            # filter if necessary
+            if fov > 0:
+                if hdulist[ii].header["FOV"] != fov: continue
+            if row > 0:
+                if hdulist[ii].header["CCD_ROW"] != row: continue
+                    
+            obslist.append(CosmicObservation.from_HDU(hdulist[ii]))
+
+        hdulist.close()
+    return obslist

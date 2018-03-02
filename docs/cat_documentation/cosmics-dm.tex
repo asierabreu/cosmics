@@ -135,6 +135,7 @@ A number of different event detection algorithms have been used for the generati
 The extraction of the data product has been split into two steps, a feature extraction and a post-processing. The first step uses the input of the different data sources to produce for every observation a list of objects that have been recognized as cosmic ray tracks. The second step then analyzes the extracted tracks further, adding information such as their orientation on the FPA or their length.
 
 \subsection{Feature Extraction}
+\label{sec:extraction}
 
 The goal of the feature extraction step is to collect all the objects recognized as cosmic ray tracks from the different datasets into a source-independent dataset for the post-processing. To that extent, we have defined an intermediary dataset named TrackObs (short for track observation), which collects necessary metadata on the source observation and contains a list of all identified objects.
 
@@ -153,7 +154,7 @@ The output of all of the following algorithms are three two-dimensional arrays o
 
 \begin{figure}
   \centering
-  \includegraphics[width=\textwidth]{images/TrackObs_Objects}
+  \includegraphics[width=\textwidth]{images/extraction/TrackObs_Objects}
   \caption{Identification of individual connected objects from a cosmic ray mask. The boolean mask (left panel) is used to calculate an integer array for all 8-connected pixels, which are labeled with a unique integer per object (middle panel). Objects are then identified by their labels as rectangular image sections around all pixels with a common label (green boxes in right panel).}
   \label{fig:TrackObs_Objects}
 \end{figure}
@@ -175,9 +176,10 @@ Each of the following algorithms produces such TrackObs objects, which are saved
 
 
 \subsubsection{SM-SIF: Laplacian Edge Detection}
+\label{sec:extrSM-SIF}
 \begin{figure}
   \centering
-  \includegraphics{images/SM_full_image}
+  \includegraphics{images/extraction/SM_full_image}
   \caption{An example of a SM-SIF source image. Axis orientation is the standard Gaia convention, with the serial register to the right and readout to the upper right corner. The aspect ratio has not been corrected for pixel geometry and binning.}
   \label{fig:SM_full}
 \end{figure}
@@ -194,7 +196,7 @@ First attempts at simply applying \textsc{Astro-SCRAPPY} to images like the one 
 
 \begin{figure}
   \centering
-  \includegraphics{images/SM_starmask}
+  \includegraphics{images/extraction/SM_starmask}
   \caption{Bright stars in SM-SIF and their masking. \textit{Left:} The appearance of the bright star from Fig. \ref{fig:SM_full}. \textit{Middle:} The left panel after applying a high threshold. The bright pixels are fully saturated and show a sharp charge transfer pattern. \textit{Right:} The left panel after applying bright star filtering - the core and a large part of the diffraction spikes are masked.}
   \label{fig:SM_starmask}
 \end{figure}
@@ -213,23 +215,47 @@ Using the bright star removal, we then constructed the following algorithm to ex
   \item Read in the image and construct the bright star mask.
   \item Subtract the AL-dependent bias and apply the gain-scale, as \textsc{L.A. Cosmic} requires an image in units of electrons to calculate the Poisson noise.
   \item Apply \textsc{L.A. Cosmic}, which returns the cosmic ray mask and a cleaned image. The values of the cleaned image are calculated by taking the mean of the surrounding, non masked pixels in a $5 \times 5$ pixel area, i.e. for a pixel located at $\left(AL,AC\right)$, the cleaned value is
-    \begin{equation*}
+    \begin{equation}
       \mathrm{Clean}\left(AL,AC\right) = \left( \sum\limits^\mathrm{mask=False}_{\substack{AL-2 \leq i \geq AL+2 \\ AC-2 \leq j \geq AC+2}} \mathrm{Source}\left( i, j \right) \right) \bigg/ \left( \sum\limits^\mathrm{mask=False}_{\substack{AL-2 \leq i \geq AL+2 \\ AC-2 \leq j \geq AC+2}} 1\right)
-    \end{equation*}
+    \end{equation}
   \item Calculate the signal array as $~\mathrm{Signal}\left(AL, AC\right)= \mathrm{Source}\left(AL, AC\right) - \mathrm{Clean}\left(AL, AC\right)$
   \item Calculate the uncertainty array as the square root of the variance of the signal array, calculated as
-    \begin{equation*}
+    \begin{equation}
       Var\left(AL,AC\right) = \mathrm{Source}\left(AL,AC\right) + \sigma_\mathrm{rn}^2 + \sum\limits^\mathrm{mask=False}_{\substack{AL-2 \leq i \geq AL+2 \\ AC-2 \leq j \geq AC+2}} \frac{\mathrm{Source}\left(i,j\right) + \sigma_\mathrm{rn}^2}{N_\mathrm{mean}\left(AL,AC\right)},
-    \end{equation*}
+    \end{equation}
     with $\sigma_\mathrm{rn}^2$ denoting the pixel readnoise, and $N_\mathrm{mean}\left(AL,AC\right)$ denoting the number of pixels used to calculate the mean for cleaning this pixel. As one can see from the equation, the noise of the source image has been assumed to be Poissonian noise and readnoise.
   \item Extract tracks from the mask, signal and uncertainty images and save them as a TrackObs, as described above.
     
 \end{enumerate}
 
-\subsubsection{BAM-OBS: Boxcar filtering / Stacking}
+The parameters used for the \textsc{L.A. Cosmic} algorithm were first selected manually, by applying the extraction algorithm to individual images and viewing the output. Selection criteria were that no stars should be misidentified as cosmic ray tracks, and that cosmic ray tracks should be complete, meaning that a single, long track should result in exactly one identified object.
+
+To verify and further tune the extraction algorithm with regards to the detection efficiency and measurement accuracy, it was necessary to have known input data with which to compare the measured output. To that extent, we utilized a previously developed CCD cosmic ray events simulator called T.A.R.S. (Tools for Astronomical Radiation Simulations) developed at ESTEC \cite{TARS}. The tool simulates the energy deposition of a cosmic ray in a CCD detector along with the charge collection to produce simulated CCD images. The first implementation of the tool was built to simulate Gaia images and was thus suited for this activity.
+
+To test the extraction algorithm, we first prepared an SM observation by cleaning it with \textsc{L.A. Cosmic}, removing any existing cosmics that would be detected by our algorithm. For the source image, we selected a large image without any saturated stars, as these cosmics could not be detected there in any case and we were more interested in 'normal' stars.
+
+We then generated cosmic ray tracks on the image, saving the locations and deposited energies for every simulated cosmic. Afterwards, we ran the extraction algorithm from above and analysed the results by associating each simulated track with the tracks recovered in its image location. Figure \ref{fig:SM_extr_verif} shows two figures of merit for the extraction algorithm: The detection efficiency and the error of the extracted energies with respect to the calculated uncertainty.
+
+The detection efficiency (left panel of Fig. \ref{fig:SM_extr_verif}) shows the number of detected tracks per input track - a value of 1 being a correct detection, a value of 0 being a non-detection and a value greater than one implying that parts of the track could not be identified, leading to multiple detections. The overall number of correctly detected events is greater than 97\,\%.
+
+The error in extracted energies is shown in the left panel of Fig. \ref{fig:SM_extr_verif}, and plots the difference between the measured track energy and the ionizing energy dumped by the simulated cosmic on the detector. For each track, this value is normalized by the uncertainty of the measured energy. A comparison of the resulting histogram with a Gaussian with a standard deviation of 1 shows that the energy measurements are correct within their estimated errors.
+
+
+
+
 \begin{figure}
   \centering
-  \includegraphics[width=\textwidth]{images/BAM-OBS_patterns}
+  \includegraphics[width=\textwidth]{images/extraction/verification_sm-sif}
+    \caption{Figures of merit for the SM-SIF extraction. \textit{Left:} Histogram of the number of associated track detections per input cosmic. A value of 0 is a non-detection, a value of 1 is a correct detection, a value of $>\!1$ means a single cosmic has resulted in multiple detections. \textit{Right:} Histogram of the difference between measured and input track energy per cosmic, normalized by the calculated uncertainty. A Gaussian with a standard deviation of 1 is plotted in red.}
+  \label{fig:SM_extr_verif}
+\end{figure}
+
+
+\subsubsection{BAM-OBS: Boxcar filtering / Stacking}
+\label{sec:extrBAM-OBS}
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{images/extraction/BAM-OBS_patterns}
   \caption{A series of three BamObservations from FOV 1. The dimensions have been rescaled to the physical dimension of the CCD -- each image pixel represents a $10 \times 120\, \mu m$ (AL $\times$ AC) sample. Individual pixels that deviate from the patterns can be recognized as cosmic ray tracks.}
   \label{fig:BAM_patterns}
 \end{figure}
@@ -238,12 +264,12 @@ Figure \ref{fig:BAM_patterns} shows a series of observations from FOV 1 of the B
 
 \begin{figure}
   \centering
-  \includegraphics{images/BAM-OBS_fringes}
+  \includegraphics[width=\textwidth]{images/extraction/BAM-OBS_fringes}
   \caption{The ADU values of the three patterns in Fig. \ref{fig:BAM_patterns} plotted along the center of the images in AC across a narrow AL region in the center. The interference pattern is very sharp, with a period of about 5 pixels in AL. The fringes of all three images overlap very closely.}
   \label{fig:BAM_fringes}
 \end{figure}
 
-Figure \ref{fig:BAM_patterns} further demonstrates that the interference pattern does not vary aside from Poissonian noise between the three images. It also shows why a simple application of the \textsc{L.A. Cosmic} algorithm to this dataset will immediately fail: The interference patterns themselves are very sharp, with a peak-to-trough distance of about 2 to 3 pixels. The algorithm is totally blinded by the pattern and can not separate it from the cosmics.
+Figure \ref{fig:BAM_fringes} further demonstrates that the interference pattern does not vary aside from Poissonian noise between the three images. It also shows why a simple application of the \textsc{L.A. Cosmic} algorithm to this dataset will immediately fail: The interference patterns themselves are very sharp, with a peak-to-trough distance of about 2 to 3 pixels. The algorithm is totally blinded by the pattern and can not separate it from the cosmics.
 
 For our track extraction algorithm, we exploited the fact that the interference pattern is relatively static. In astronomy, multiple exposures of the same object (assuming constant luminosity) are used to reject the spurious high pixel values caused by cosmic rays -- a similar algorithm is used to reject cosmics in BamObservations when analyzing the pattern. In our case, we can simply do the reverse, and accept pixels that vary significantly stronger than the inherent counting and readout noise as the tracks of cosmic rays.
 
@@ -253,27 +279,27 @@ The concrete algorithm assumes as an input a time-ordered series of BamObservati
   \item Construct the BoxCar: Read the first 7 BamObservations -- applying the electron conversion gain -- into a three dimensional array with the indices $t$, $AL$ and $AC$ - with $t \in [1,\cdots,7]$ ($t = 3$ being the central observation), and $AL$ and $AC$ denoting the image dimensions.
   \item Sigma-clipping: Compute the median and standard deviation across time and mark all the pixels whose difference to the median exceeds a chosen threshold - these are likely cosmics, and will not be used to calculate the pattern.
   \item Calculate a two-dimensional image array of the pattern, by taking the mean across time without using the sigma-clipped pixels, e.g.
-\begin{equation*}
+\begin{equation}
   \mathrm{Pattern}\left( AL,AC \right) = \left( \sum\limits_{t~\mathrm{not~clipped}} \mathrm{BoxCar}\left( t, AL, AC \right) \right) \bigg/ \left( \sum\limits_{t~\mathrm{not~clipped}} 1\right).
-\end{equation*}
+\end{equation}
   \item Calculate the signal array by subtracting the Pattern from the central array in the BoxCar, e.g.
-\begin{equation*}
+\begin{equation}
   \mathrm{Signal}\left( AL,AC \right) = \mathrm{BoxCar}\left(t=3,AL,AC \right) - \mathrm{Pattern}\left( AL,AC \right).
-\end{equation*}
+\end{equation}
   \item Calculate the uncertainty array as the square root of the variance of the signal array, calculated as
-    \begin{equation*}
+    \begin{equation}
       Var\left(AL,AC\right) = \mathrm{BoxCar}\left(t=3,AL,AC\right) + \sigma_\mathrm{rn}^2 + \sum\limits_{t~\mathrm{not~clipped}} \frac{\mathrm{Boxcar}\left(t,AL,AC\right) + \sigma_\mathrm{rn}^2}{N_\mathrm{mean}\left(AL,AC\right)},
-    \end{equation*}
+    \end{equation}
   with $\sigma_\mathrm{rn}^2$ denoting the pixel readnoise, and $N_\mathrm{mean}\left(AL,AC\right)$ denoting the number of pixels in the BoxCar that have not been rejected by sigma clipping at this $\left(AL,AC  \right)$ pair. As one can see from the equation, the noise of the BamObservations has been assumed to be Poissonian noise and readnoise.
   \item Create the cosmic mask: Divide the signal array by the uncertainty array and create the boolean mask array, set to true where the signal/uncertainty ratio is greater than a threshold $f$. Due to the strong photon background, some cosmic pixels are missed in this step. We attempt to mitigate this by investigating all the pixels that neighbour the previously masked pixels, found via binary dilation, and applying for them a signal/uncertainty threshold of $r_\mathrm{Neighbour}*f$, adding the pixels that satisfy this condition to the mask as well.
-  \item Apply a track connection algorithm: Even after the previous step, visually apparent long cosmic ray tracks still remain separated - refer to the left panel of Figure \ref{fig:BAM_connection} for an illustration. Tracks that are oriented in the AL direction see a strongly variable photon background, seen as fluctuations in the uncertainty array. These pixels are less likely to be detected by the thresholding of before. Especially towards the center of the image, where the pattern amplitude is very high, this leads to a single, long cosmic being detected as multiple short cosmics in the troughs of the interference pattern, which eventually leads to an overestimation of the cosmic ray rate.
+  \item \label{item:connectAlg} Apply a track connection algorithm: Even after the previous step, visually apparent long cosmic ray tracks still remain separated - refer to the left panel of Figure \ref{fig:BAM_connection} for an illustration. Tracks that are oriented in the AL direction see a strongly variable photon background, seen as fluctuations in the uncertainty array. These pixels are less likely to be detected by the thresholding of before. Especially towards the center of the image, where the pattern amplitude is very high, this leads to a single, long cosmic being detected as multiple short cosmics in the troughs of the interference pattern, which eventually leads to an overestimation of the cosmic ray rate.
 
     In an attempt to correct for this track separation, we implemented a track connection algorithm: We first apply to the mask an 8-connected binary dilation followed by a 4-connected binary erosion (this is a variant on binary closing, which uses the same structuring elements for the dilation and erosion instead), illustrated in the middle and right panels of Fig. \ref{fig:BAM_connection}. As the Figure shows, this marks several pixels of interest that may connect the separated objects.
 
     We then examine each of the newly merged tracks, which are identified by the standard labelling algorithm. For each of the tracks, we first calculate the mean of the previously identified signal pixels of this track, $m_\mathrm{Object}$. Assuming that a cosmic ray creating a long track should have a constant energy deposition per path length, we examine each of the candidate pixels (at the location $\left(AL,AC\right)$), checking for the condition
-    \begin{equation*}
+    \begin{equation}
       \lvert Signal\left( AL,AC \right) - m_\mathrm{Object}\rvert > cfac * \sqrt{Var\left( AL,AC \right)},
-    \end{equation*}
+    \end{equation}
     with $cfac$ being an algorithm parameter. The above equation checks whether the signal value of the candidate pixel is sufficiently close to the value of the other pixels in this object. If a pixel satisfies the condition, it is added to the pixel mask. 
   \item Extract tracks from the mask, signal and uncertainty images and save them as a TrackObs, as in SM-SIF and described above.
   \item Update BoxCar: Read in the next BamObservation and replace the oldest pattern in the BoxCar with it -- the BoxCar is utilized as a FIFO, in this case. We then update the central pixel index and repeat starting step 2 until all BamObservations have been processed.
@@ -281,15 +307,37 @@ The concrete algorithm assumes as an input a time-ordered series of BamObservati
 
 \begin{figure}
   \centering
-  \includegraphics{images/BAM-OBS_connection}
+  \includegraphics{images/extraction/BAM-OBS_connection}
   \caption{Illustration of the track connection algorithm used for this dataset. \textit{Left:} An example of a cosmic ray mask where ray tracks oriented in the AL direction have not been fully identified. \textit{Middle:} Application of 8-connected binary dilation to the mask - the added pixels are shown in gray. \textit{Right:} Additional application of 4-connected binary erosion, shown in the gray pixels, which are examined by the connection algorithm.}
   \label{fig:BAM_connection}
 \end{figure}
 
-\subsubsection{BAM-SIF: Thresholding}
+As we did for the SM-SIF extraction, we also tested the BAM-OBS extraction algorithm using the T.A.R.S. package. In the case of BAM-OBS, we first created a series of fake BAM patterns by calculating a running median over a set of 100 successive BamObservations. Concretely, we took for every observation the four preceding and four next observation and calculated the median image of these observations. Afterwards, we added Poissonian counting noise to each image.
+
+We then added simulated cosmic ray tracks to all images and ran the extraction algorithm over the list of observations. As in the SM-SIF verification, we associated each input track with the detected tracks in its image location. As in the previous verification, Figure \ref{fig:BAM-OBS_extr_verif} shows the detection efficiency and normed energy error for the BAM-OBS extraction, once again returning consistent values for both. Note that these plots show results for FOV 2, whose interference pattern has a higher intensity and thus noise.
+
 \begin{figure}
   \centering
-  \includegraphics{images/BAM-SIF_full_image}
+    \includegraphics[width=\textwidth]{images/extraction/verification_bam-obs_mended}
+    \caption{Figures of merit for the BAM-OBS extraction, as in Fig. \ref{fig:SM_extr_verif}.}
+  \label{fig:BAM-OBS_extr_verif}
+\end{figure}
+
+To justify the use of the connection algorithm (step \ref{item:connectAlg} above), Fig. \ref{fig:BAM-OBS_nomend_extr_verif} shows the figures of merit for the same input data as Fig. \ref{fig:BAM-OBS_extr_verif} when the connection algorithm is not used. While the measured energies don't differ significantly, the number of input tracks recognised as multiple output tracks is lowered by the connection algorithm.
+
+\begin{figure}
+  \centering
+    \includegraphics[width=\textwidth]{images/extraction/verification_bam-obs_old}
+    \caption{Figures of merit for the BAM-OBS extraction without the track connection algorithm. Compared to Fig. \ref{fig:BAM-OBS_extr_verif}, individual cosmics are more likely to be identified as multiple tracks.}
+  \label{fig:BAM-OBS_nomend_extr_verif}
+\end{figure}
+
+
+\subsubsection{BAM-SIF: Thresholding}
+\label{sec:extrBAM-SIF}
+\begin{figure}
+  \centering
+  \includegraphics{images/extraction/BAM-SIF_full_image}
   \caption{An example of a BAM-SIF source image, which has been rescaled to the physical CCD dimensions. The top half of the image shows the AC region of FOV 2, the bottom half that of FOV 1. The off-pattern regions in green and blue boxes are used for cosmic extraction.}
   \label{fig:BAM-SIF_full}
 \end{figure}
@@ -307,13 +355,13 @@ The extraction algorithm for this dataset is then (for each region seperately):
 
     The removal of the TDI background is demonstrated in Figure \ref{fig:BAM-SIF_background}
   \item Calculate the signal and variance arrays as
-    \begin{equation*}
+    \begin{equation}
       Signal\left( AL,AC \right) = Source\left( AL,AC \right) - Background\left(AC \right)
-    \end{equation*}
+    \end{equation}
     and
-    \begin{equation*}
+    \begin{equation}
       Var\left( AL,AC \right) = Source\left( AL,AC \right) + \sigma_\mathrm{rn} + \sigma_\mathrm{Background},
-    \end{equation*}
+    \end{equation}
     with $\sigma_\mathrm{rn}$ being the readnoise and once again assuming Poisson noise in the source array. The uncertainty array is then the square root of the variance array.
   \item Construct the mask array in exactly the same way as for BAM-OBS, including the track connection. While this should not be necessary here, we want to have as similar as possible algorithms for BAM-OBS and BAM-SIF, to see the effect of the pattern.
   \item Extract tracks from the mask, signal and uncertainty images and save them as a TrackObs, as in the algorithms above.
@@ -321,23 +369,38 @@ The extraction algorithm for this dataset is then (for each region seperately):
 
 \begin{figure}
   \centering
-  \includegraphics{images/BAM-SIF_background}
+  \includegraphics{images/extraction/BAM-SIF_background}
   \caption{\textit{Left:} The two extraction regions from Fig. \ref{fig:BAM-SIF_full}. \textit{Right:} The same image with the TDI backround removed, leaving only cosmic ray tracks.}
   \label{fig:BAM-SIF_background}
 \end{figure}
 
 All steps until the calculation of the signal are the same as in \cite{GAIA-DE-TN-ESAC-RKO-033}, which only returned the signal images.
 
-\subsubsection{Extraction Pipeline}
-\subsection{Post-Processing}
+As in both previous algorithms, we once again verified the BAM-SIF extraction against simulated cosmics. In this case, a fake TDI background was obtained by removing outliers from a BAM-SIF observation. A background image is then randomly sampled from the extracted background. Afterwards, simulated cosmic ray tracks are added on top of the produced image and extracted via the BAM-SIF algorithm. The figures of merit obtained in the same way as before are plotted in Figure \ref{fig:BAM-SIF_extr_verif}, showing a very good detection efficiency and energy errors within the bounds expected from the calculated uncertainties.
+\begin{figure}
+  \centering
+    \includegraphics[width=\textwidth]{images/extraction/verification_bam-sif}
+    \caption{Figures of merit for the BAM-SIF extraction, as in Fig. \ref{fig:SM_extr_verif}.}
+  \label{fig:BAM-SIF_extr_verif}
+\end{figure}
 
+
+\subsubsection{Extraction Pipeline}
+
+Having specified the extraction of cosmic ray tracks from the images themselves, we now describe the  extraction pipelines used to systematically retrieve the image data files from the Gaia Main Database in order to produce and save TrackObs from them.
+
+\paragraph{SM-SIF and BAM-SIF}
+\paragraph{BAM-OBS}
+\subsection{Post-Processing}
+\label{sec:postprocessing}
+For the final data product described in Section \ref{sec:CosObsModel}, we derive additional data from the raw extracted tracks in a TrackObs. The algorithms for deriving these are outlined in this section
 \subsubsection{Observed Flux}
 
 One of the first -- and most simple -- data products that can be derived from a TrackObs is the flux measured per observation. The calculation of a flux is in this case very simple: Given an exposed CCD area $A_\mathrm{exp}$ and exposure time $T_\mathrm{exp}$ the flux is simply calculated as
 
-\begin{equation*}
+\begin{equation}
   F = \frac{\mathrm{Counts}}{A_\mathrm{exp} \cdot T_\mathrm{exp}}
-\end{equation*}
+\end{equation}
 
 In the following, we determine these values for SM-SIF and BAM observations, whose computation are not trivial due to the use of TDI (and in the latter case, staring) observations and the size of the used AL readout windows relative to the physical CCD size.
 
@@ -409,11 +472,11 @@ From an image pixel perspective, each pixel has been exposed for exactly $T_\mat
 
 As one can tell from the above, the physical perspective has a lower number of pixels, but a higher exposure time per pixel (assuming $2 N_\mathrm{AL} > 2900$). The image perspective has more pixels, but lower exposure times. Irregardless of the perspective, the product $A_\mathrm{exp} \cdot T_\mathrm{exp}$ -- which is of interest for computing fluxes -- is always the same, being
 
-\begin{align*}
+\begin{align}
   \mathrm{Physical: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} &= \left(2900 \cdot 1966 \cdot 10\,\mu m \cdot 30\,\mu m\right) \cdot \left( T_\mathrm{TDI} \cdot 2 N_\mathrm{AL} \right)\\
   \mathrm{Image: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} &= \left(N_\mathrm{AL} \cdot 893 \cdot 4 \cdot 10\,\mu m \cdot 30\,\mu m\right) \cdot \left( T_\mathrm{TDI} \cdot 2900 \right)\\
   &= 33.62 ~ \left(\frac{N_\mathrm{AL}}{1000}\right)\,\mathrm{cm^{2}\,s}
-\end{align*}
+\end{align}
 
 Going forward, we will use the image perspective, as it is consistent with prior studies of the BAM image and more useful for the next section. It is also, as we'll see later, easier to treat masked pixels. Nevertheless, for the calculation of fluxes, both perspectives are equivalent.
 
@@ -530,11 +593,11 @@ In the image picture, the calculation is much easier. Viewing each readout windo
 
 The product of exposed area and exposure time, which is of interest for flux determination, is in both pictures (per readout window)
 
-\begin{align*}
+\begin{align}
   \mathrm{Physical: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} = &\left(4500 \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m \right) \cdot \left( N_\mathrm{AL}\ \cdot T_\mathrm{TDI} \right) \\+ &\left( N_\mathrm{AL} \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m\right) \cdot \left( 19\,s \right)\\
   \mathrm{Image: }~ A_\mathrm{exp} \cdot T_\mathrm{exp} = &\left( N_\mathrm{AL} \cdot 10\,\mu m \cdot 4\, N_\mathrm{AC} \cdot 30\,\mu m\right) \cdot \left(4500\, T_\mathrm{TDI} + 19\,s \right)\\
   = &22.49\,\mathrm{cm^{2}\,s} ~~~\mathrm{(for~BAM\!\!-\!\!OBS)}.
-\end{align*}
+\end{align}
 
 As the computation is more simple in the image picture, we will from now on use this picture.
 
@@ -544,29 +607,199 @@ In both SM and BAM images, some image pixels can not be used for the determinati
 
 Correcting the exposed area for these masked pixels is very easy in the image picture, as we simply discard these pixels, meaning one can calculate the exposed area using
 
-\begin{equation*}
+\begin{equation}
   A_\mathrm{exp} = (N_\mathrm{tot} - N_\mathrm{mask}) \cdot b_\mathrm{AL} \cdot b_\mathrm{AC} \cdot 10 \cdot 30 \, \mu m^{2}
-\end{equation*}
+\end{equation}
 
 With $N_\mathrm{tot}$ being the total number of image pixels, $N_\mathrm{mask}$ being the number of masked pixels and $b_\mathrm{AL}$ and $b_\mathrm{AC}$ being the binning factor in AL and AC, respectively.
 
 
 \subsubsection{Track Geometries}
+For particle tracks that pass through multiple pixels, it is possible to estimate the entrance angle of a cosmic into a CCD with respect to the FPA and the length of the path of the particle through the chip. For a selected subset of tracks, this was attempted in this dataset using either simple estimates or a fitting technique.
 
-For Particle tracks covering a significant amount of pixels, it is possible to estimate the the orientation and the length of the particle track for the purposes of future analysis.
+\begin{figure}
+  \centering
+  \includegraphics{images/postprocessing/theta_sketch}
+  \caption{Definition of the track angle $\theta$ in the standard Gaia CCD reference system. The red line on the left shows an example track, whose start is always defined as the end-point at the lower AL-coordinate. The blue compass rose shows the angle corresponding to different track orientations.}
+  \label{fig:theta_sketch}
+\end{figure}
+Figure \ref{fig:theta_sketch} shows the definition of the angle $\theta$ used in this analysis. It is obtained via the slope of a line describing the cosmic ray track in an (AL,AC) coordinate system, e.g. 
+\begin{equation}
+  \theta = \tan^{-1} \left( \frac{AC_\mathrm{start} - AC_\mathrm{end}}{AL_\mathrm{start} - AL_\mathrm{end}} \right) [^{\circ}],
+  \label{eq:theta_def}
+\end{equation}
 
-\subsubsection{Flagging Special Tracks}
+where the starting point of a track is always defined to be its edge point at the lower AL value. We have made this choice because we do not determine at which of the edge points of a track the cosmic entered and exited the CCD. As such, $\theta$ is defined in a range of $\left[ -90^{\circ}, 90^{\circ} \right]$, with $0^{\circ}$ corresponding to a track completely along the AL axis, $\pm 90 ^{\circ}$ being oriented in the AC direction.
 
-i.e. those at the edge of the readout windows. Maybe also the removal of tracks at obviously too low energies?
+For a track that is one-dimensional, meaning that all its signal pixels are in one line or column, the angle and track length are constrained and can be estimated with a simple algorithm, outlined in Figure \ref{fig:1D_angle}. The particle trajectory can be between two extremes: either perfectly aligned to the AL/AC direction or running between the corners of the signal pixels at the edge of the track.
+
+\begin{figure}
+  \centering
+  \includegraphics{images/postprocessing/1D_angle}
+  \caption{Possible track lengths and angles in a one-dimensional track in AL. The longest, steepest track in red passes through the corners of the most distant pixels, while the shortest, flattest track in blue starts and ends near the nearest edges of the outermost pixels.}
+  \label{fig:1D_angle}
+\end{figure}
+
+In formulas: A track along an AL line has an angle $\theta$ of
+
+\begin{equation}
+  \theta = 0^{\circ} \pm \tan^{-1} \left( \frac{{h_\mathrm{AC}}}{w_\mathrm{AL} \times N_\mathrm{AL}} \right)
+  \label{eq:1Dtrackang}
+\end{equation}
+
+and a length $l$ of
+
+\begin{equation}
+  w_\mathrm{AL} \times \left(N_\mathrm{AL}-2\right) \leq l \leq \sqrt{\left( w_\mathrm{AL} \times N_\mathrm{AL} \right)^{2} + \left( h_\mathrm{AC}\right)^{2}},
+  \label{eq:1Dtracklen}
+\end{equation}
+
+with
+\begin{itemize}
+  \item $N_\mathrm{AL}$ being the number of binned pixels in AL
+  \item $w_\mathrm{AL}$ being the binned pixel width (i.e. in AL direction)
+  \item $h_\mathrm{AC}$ being the binned pixel height.
+\end{itemize}
+
+This can be calculated analogously for a track along an AC line. For such tracks, we define our output values for the track angle and length as the mean of Equations \ref{eq:1Dtrackang} and \ref{eq:1Dtracklen} respectively. The uncertainty is then half the absolute value of the difference between the two extreme values of these equations.
+
+For tracks that are not aligned with the AL and AC direction, we use a fitting routine to determine $\theta$, which we in turn use to determine $l$. The fitting routine is shown in Figure \ref{fig:2D_fit}.
+
+\begin{figure}
+  \centering
+  \includegraphics{images/postprocessing/2D_fit}
+  \caption{Fitting routine on two-dimensional tracks on the example of a BAM-OBS track. \textit{Left:} Track image, with the pixels scaled to their physical dimension. \textit{Right:} Best fit. The (x, y) pairs have been computed by calculating the center of mass along AC for each AL-line, with the error bars representing the pixel size. The purple line shows the best line fit as determined by orthogonal distance regression.}
+  \label{fig:2D_fit}
+\end{figure}
+
+For each track image, we first determine the length of the bounding box in binned samples along the AL and AC direction. For each pixel coordinate in the longer axis, we determine the center of mass of the track image values along the shorter axis (e.g. if the image has more pixels in AL, we compute the center of mass along the AC axis for each line). The resulting pairs of values are saved in an $(x,y)$ array, with the x-value denoting the location in AL, the y-value denoting the location in AC multiplied by the factor $f_\mathrm{pix} = 3\times \frac{\mathrm{AC~binning}}{\mathrm{AL~binning}}$. x and y are, as such, in the units of the physical length of a binned AL pixel.
+
+The rationale for using the center of mass is that can better estimate the trajectory of a cosmic if it causes a signal in, for instance, two adjacent pixels in a line -- see the Figure \ref{fig:2D_fit}. 
+
+For each $(x,y)$ pair, we set an uncertainty $(\sigma_x = 0.5, \sigma_y = 0.5 f_\mathrm{pix})$, representing the uncertainty of the detection location due to pixelisation. We then perform a fit of a simple fit to a line equation,
+
+\begin{equation}
+  y(x) = m \cdot x + y_0,
+\end{equation}
+
+using the \texttt{scipy} implementation of the Orthogonal Distance Regression algorithm \cite{ODR}. This algorithm takes into account the uncertaintes of both $x$ and $y$, providing best fit values and estimations on the standard deviations $\sigma_m$ and $\sigma_{y_o}$ of the slope and offset.
+
+To determine the angle theta and its uncertainty, we utilize the inverse tangent and gaussian error propagation, yielding
+
+\begin{equation}
+  \theta = \tan^{-1}\left( m \right), ~~ \sigma_\theta = \frac{1}{m^{2}+1} \sigma_m
+\end{equation}
+
+to determine the length of the cosmic, we define the distances $d_x$ and $d_y$ as the difference of x and y between the first and last $(x,y)$ pairs -- if the image has more pixels in AL ($N_\mathrm{AL} \geq N_\mathrm{AC}$), this would be the pairs at the lowest and highest AL, respectively.
+
+To calculate the length, we separate into two cases:
+\begin{enumerate}
+  \item If $N_\mathrm{AL} \geq N_\mathrm{AC}$, use $d_y = m \cdot d_x$. Then
+    \begin{align}
+      l &= \sqrt{d_x^{2} + d_y^{2}} = \sqrt{m^{2} + 1} \cdot |d_x|,\\
+      \sigma_l^{2} &= \left( m^{2} + 1 \right) \cdot 2 \sigma_x^{2} + \frac{m^{2} d_x^{2}}{m^{2}+1}  \cdot \sigma_m^{2},
+    \end{align}
+    using Gaussian error propagation for $\sigma_l$.
+  \item If $N_\mathrm{AL} < N_\mathrm{AC}$, use $d_x = m^{-1} \cdot d_y$. Then
+    \begin{align}
+      l &= \sqrt{d_x^{2} + d_y^{2}} = \sqrt{m^{-2} + 1} \cdot |d_y|,\\
+      \sigma_l^{2} &= \left( m^{-2} + 1 \right) \cdot 2 \sigma_y^{2} + \frac{d_y^{2}}{m^{4}+m^{6}}  \cdot \sigma_m^{2},
+    \end{align}
+    using Gaussian error propagation for $\sigma_l$.
+\end{enumerate}
+
+the separation into two cases was chosen to avoid numerical unstability, since $d_y$ and $m$ are very small in case 1, while $d_x$ is very small in case 2, and $m$ very large.
+
+\begin{figure}
+  \centering
+  \includegraphics{images/postprocessing/2D_badfit}
+  \caption{Issues with fitting tracks whose length in AC or AL is 2. \textit{Left:} Track image, with the pixels scaled to their physical dimension. \textit{Right:} Best line fit and the steepest and flattest plausible associated tracks.}
+  \label{fig:2D_badfit}
+\end{figure}
+
+This fitting routine was then applied to a subset of all detected tracks in a TrackObs, namely those that
+\begin{enumerate}
+  \item are two dimensional ($N_\mathrm{AL} > 1$ and $N_\mathrm{AC} > 1$)
+  \item contain at least 5 pixels with a signal value
+\end{enumerate}
+
+in addition, tracks with $N_AL = 2$ or $N_AC = 2$ must also be significantly longer in their other dimension. This is due to the fact that, as Figure \ref{fig:2D_badfit} outlines, there is a very high uncertainty in the distance crossed along the dimension whose length is two pixels.
+
+To test these analysis routines, we once again used the T.A.R.S. simulator to provide input cosmic rays with known quantites - in this case, the true angle $\theta$ and projected path length $l$. We used the simulator to generate cosmic ray subimages akin to those saved into a track observation. This was done for two cases - one being an SM-like thin chip with a binning of 2 in both AL in AC, the other being a BAM-like thick chip with a binning of 4 in AC and no binning in AL.
+
+In this way, we could predominantly examine the effects of binning and the resulting pixel geometry on the retrieval of the track geometries.
+
+In the case of the SM-like chp, Figure \ref{fig:AngleDist_SM} plots the input angle of the source cosmic versus the measured angle for a long simulation run. Within their accuracies, the measured angles represent the input angles.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/AngleDist_SM}
+  \caption{Input angle vs measured angle (in units of degrees) for SM-SIF observations. The error bars represent the uncertainty of the recovered angles, the red diagonal represents the optimal values. The results for one-dimensional and fitted tracks are in the left and right panel, respectively.}
+  \label{fig:AngleDist_SM}
+\end{figure}
+
+This is better illustrated in Fig. \ref{fig:AngleErr_SM}, which shows histograms of the difference between measured and input angles, normalized by the calculated uncertainties. Here we see that while the fitted cosmics fall well into a Gaussian, the one-dimensional tracks show a bi-modal distribution, where track angles are either systematically under- or over-estimated. Examining Fig. \ref{fig:AngleDist_SM}, these cosmics appear to be those with very large input angles that are nonetheless seen at $\theta = 0^\circ$.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/AngleErr_SM}
+  \caption{Histograms for the difference of the output angle to the input angle in SM-SIF observations, normalized by the calculated angle uncertainty. The left and right panel show the values for one-dimensional and fitted tracks, respectively. The red curves represent Gaussians with a standard deviation of 1.}
+  \label{fig:AngleErr_SM}
+\end{figure}
+
+Figure \ref{fig:LenErr_SM} shows similar histograms for the error in the measured track length. These are within the ranges expected by their uncertainty, with a slight systematic overestimation in both indicated by the offset of the maximum from 0.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/LenErr_SM}
+  \caption{Histograms for the difference of the output track length to the input track length in SM-SIF observations, normalized by the calculated length uncertainty. The left and right panel show the values for one-dimensional and fitted tracks, respectively. The red curves represent Gaussians with a standard deviation of 1.}
+  \label{fig:LenErr_SM}
+\end{figure}
+
+The same analysis for the BAM-like chip shows different systematics. As Figure \ref{fig:AngleDist_BAM} shows, a population of the fitted tracks with $|\theta| \leq 60^{\circ}$ is redistributed to $|\theta| \approx \pm 60^{\circ}$. This is most likely due to the pixel geometry making these tracks appear to have similar angles.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/AngleDist_BAM}
+  \caption{Input angle vs measured angle (in units of degrees) for BAM-OBS and BAM-SIF observations, as in Fig. \ref{fig:AngleDist_SM}.} 
+  \label{fig:AngleDist_BAM}
+\end{figure}
+
+The error histograms of the measured angles (Fig \ref{fig:AngleErr_BAM}) shows that while the one-dimensional tracks are all correct within the limits of their uncertainty, the fitted tracks contain some outliers with respect to the bell curve - these are the same cosmics that are mistakenly redistributed to higher angles.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/AngleErr_BAM}
+  \caption{Histograms for the difference of the output angle to the input angle in BAM-OBS and BAM-SIF observations, as in Fig. \ref{fig:AngleErr_SM}.}
+  \label{fig:AngleErr_BAM}
+\end{figure}
+
+The measured lengths, plotted for the BAM-like chip in Figure \ref{fig:LenErr_BAM} are once again correctly estimated, with a trend towards an overestimation of the length.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{images/postprocessing/LenErr_BAM}
+  \caption{Histograms for the difference of the output track length to the input track length in BAM-OBS and BAM-SIF observations, as in Fig. \ref{fig:LenErr_SM}.}
+  \label{fig:LenErr_BAM}
+\end{figure}
+
+
+
+
+\subsubsection{Edge Tracks}
+
+Users may not want to use tracks that are located at the edges of a readout window, as the detection does not contain the full energy dumped by the cosmic on the CCD, leading to artificially low energies.  We mark these tracks, applying a flag whenever one or more edges of the bounding box of a track is located on the edge of the input image.
 
 
 \subsubsection{Post-Processing Pipeline}
+
 \section{Data Model}
 \label{sec:datamodel}
 
 This data model is composed of entities {\it CosmicObservation} which are described in full detail in the following subsection.
 
-\subsection{Data Model Description}
+\subsection{Main Dataset Description}
+\label{sec:CosObsModel}
 
 \textbf{Entity Name}:  \textit{CosmicObservation}
 \newline
@@ -592,7 +825,7 @@ SRC\_AL & AL-dimension of the source image  & pixels & Short \\ \hline
 SRC\_AC & AC-dimension of the source image  & pixels & Short \\ \hline
 MASKPIX & Number of masked pixels in the source image & pixels & Short \\ \hline
 FLUX & Estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
-FLUX\_ERR & Poisson Uncertanty of estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
+FLUX\_ERR & Poisson Uncertainty of estimated particle flux & particles\,cm$^{-2}$\,s$^{-1}$ & Float \\ \hline
 \end{tabular}}
 \caption{Event detection table header version \dmVersion}
 \end{table}
@@ -622,17 +855,14 @@ TRACK\_THETA\_ERR & Uncertainty in the estimated incident particle impact angle 
 \caption{Event detection table version \dmVersion}
 \end{table}
 
-% Questions:
-% - users may also be interested in track lengths in SI units, e.g. micrometers
-% - will we provide extra info on the binning for individual data products, or give the pixel coordinates of the samples (which implicitly include the binning)?
-% - are angles already with respect to some external reference e.g. the sun? We may need two angles for a full description (angle of focal plane wrt sun AND angle of the cosmic on the focal plane)
-% the focal plane to sun angle will be interesting in any case during solar flares, as this should lead to an additional modulation in flux
-% should TRACK_EN be in keV? the conversion is a constant (pair production energy in SI)
-% I suppose EST_PART_EN would be for protons?
+\subsection{Derived Dataset Description}
+\label{sec:FluxModel}
+We provide additional files listing just the measured flux per observation.
 
-\subsection{Event Track Reconstruction}
-
-We should describe here (TBD if needed) a simple way to reconstruct the window for a given detection from the provided data.
+\subsection{Auxillary Datasets Description}
+\label{sec:AuxModel}
+\subsubsection{Spacecraft Spin Phase}
+\subsubsection{Spacecraft Location}
 
 \section{Persistence Considerations}
 \label{sec:persist}
@@ -692,6 +922,8 @@ This is TBD.
 \bibitem{GAIA-DE-TN-ESAC-RKO-033} R. Kohley \emph{Cosmic rays on BAM CCDs data delivery note}.
 \bibitem{Dokkum_cosmics} P. G. van Dokkum \emph{Cosmic-Ray Rejection by Laplacian Edge Detection}.
 \bibitem{astroscrappy} C. McCully \emph{Astro-SCRAPPY: The Speedy Cosmic Ray Annihilation Package in Python}, \url{https://github.com/astropy/astroscrappy}.
+\bibitem{TARS} Lionel Garcia et al. \emph{Tools for Astronomical Radiation Simulations}
+\bibitem{ODR} P. T. Boggs and J. E. Rogers, \emph{Orthogonal Distance Regression}, in ``Statistical analysis of measurement error models and applications: proceedings of the AMS-IMS-SIAM joint summer research conference held June 10-16, 1989,'' Contemporary Mathematics, vol. 112, pg. 186, 1990.
 
 
 \end{thebibliography}

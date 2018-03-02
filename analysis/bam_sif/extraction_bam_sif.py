@@ -57,14 +57,16 @@ def bam_sif_signal(source, readnoise):
 # this also includes the AC-extent for fov 2
 # rewrite the bam_cosmics routine to write a BAM-SIF header (which then implicitly assumes our readout window)
 
-def bam_sif_cosmics(signal, err_sig, threshold, threshfrac, N_mask, gain, acqTime):
+def bam_sif_cosmics(signal, err_sig, threshold, threshfrac, gain, acqTime):
     """
     Docstring TBD. Essentially a specialized wrapper around bam_cosmics from bam extraction. Returns TWO trackobs
     """
+    signal = np.ma.array(signal)
+    err_sig = np.ma.array(err_sig)
     # Get the cosmics via BAM cosmics
-    out2 = bam_cosmics(signal[:,:80], err_sig[:,:80], threshold, threshfrac, N_mask, gain)
+    out2 = bam_cosmics(signal[:,:80], err_sig[:,:80], threshold, threshfrac,  gain)
     # fov 1 does not use all the field - I may want to make this a parameter above
-    out1 = bam_cosmics(signal[:,80:140], err_sig[:,80:140], threshold, threshfrac, N_mask, gain)
+    out1 = bam_cosmics(signal[:,80:140], err_sig[:,80:140], threshold, threshfrac, gain)
     
     # Modify the outputs
     for output in [out1,out2]:
@@ -73,7 +75,7 @@ def bam_sif_cosmics(signal, err_sig, threshold, threshfrac, N_mask, gain, acqTim
         output.acqTime = acqTime
         output.gain = gain
     
-    out1.fov = 1
-    out2.fov = 2
+    out1.fov = 2
+    out2.fov = 1
     
     return out1, out2
