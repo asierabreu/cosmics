@@ -1,0 +1,139 @@
+A brief summary of the procedure for adding to the output catalog - i.e. which scripts to run for which dataset.
+
+------------------------------------------------------------------------------
+FEATURE EXTRACTION
+------------------------------------------------------------------------------
+::::::::::::::::::::::::::::::::::::::::
+SM-SIF
+1.: Get the SIF filenames
+
+The script ./input/sm/sm-sif_clean_filenames.py largely automates this, generating a list of clean fits filenames (i.e. those that do not contain calibration activities). You can call it with the options
+
+Option -d: /calteam/data/operations/SifPipeline/SifObservations/fits
+Option -o: a filename that does not yet exist
+
+The output file then contains a list of filenames.
+
+NOTE: The time intervals that are ignored for every chip or for each row individually are currently hard-coded into the script!
+
+
+
+1.5: To generate a delta:
+
+Take the file from step 1 and remove those processed before. Continue with step 2
+
+
+
+2.: Run the extraction script
+
+Run ./scripts/sm_batch_processing.py
+- The input file is from the previous step.
+- The calibration file is located in ./input/sm/sm_calibdat.fits
+- The outputRoot is usually /calteam/data/COSMICS/TrackObs/SM (although the SM can in principle be dropped, if we want all the TrackObs in one place)
+
+::::::::::::::::::::::::::::::::::::::::
+BAM-SIF
+1.: Get the SIF filenames
+
+The script ./input/bam-sif/bam-sif_filenames.py largely automates this, generating a list of filenames of conforming observations (i.e. those that have the right image dimensions). Call it with the options
+
+Option -d: /calteam/data/operations/SifPipeline/SifObservations/fits
+Option -o: a filename that does not yet exist
+
+The output file then contains a list of filenames.
+
+
+
+1.5: To generate a delta:
+
+Take the file from step 1 and remove those processed before. Continue with step 2
+
+
+
+2.: Run the extraction script
+
+Run ./scripts/bam-sif_batch_processing.py
+- The input file is from the previous step.
+- The outputRoot is usually /calteam/data/COSMICS/TrackObs/BAM-SIF (although the BAM-SIF can in principle be dropped, if we want all the TrackObs in one place)
+
+::::::::::::::::::::::::::::::::::::::::
+BAM-OBS
+1.: Get the gbin files
+
+This is best done via the MDB WebExplorer - simply get a list of all the BAM-OBS gbin files
+
+
+
+1.5: To do a delta:
+
+Remove all the filenames present in previous extraction runs, and note down the LAST filename in the last run before
+
+
+
+2.: Run the extraction script
+
+Run ./scripts/bam_batch_processing.py
+- The input file is from the previous step.
+- The outputRoot is usually /calteam/data/COSMICS/TrackObs/BAM (although the BAM can in principle be dropped, if we want all the TrackObs in one place)
+- writeGroup is best taken from the default
+- choice of fileGroup: Given a number of gbins nG and number of cores nC, set fileGroup = 6*nG/nC (each core then handles 6 files - depending on how you round - this is a good value for parallelization)
+- IF DOING A DELTA: set -p to the filename noted down in step 1.5
+
+::::::::::::::::::::::::::::::::::::::::
+If everything ran correctly, you now have a collection of TrackObs fits files
+
+
+
+------------------------------------------------------------------------------
+POST-PROCESSING
+------------------------------------------------------------------------------
+I will explain this independent of the dataset (in fact, all of them can be done at once)
+
+1.: Get the source files
+
+Get a filename with all the TrackObs you want to process. An example script (a find command and sorting command) is written in ./input/post-processing/get_filenames.sh.
+
+1.5: To do a delta:
+
+Only use the names of the files that have not yet been processed. A way to tell this would be to search for the corresponding files in the existing CosmicObservations folder, which has a structure of yyyy/mm/dd/<SOURCE>_OBMT_START_<OBMT>.fits
+
+
+2.: Run the conversion script
+
+Run ./scripts/batch_postprocessor.py
+- the inputFile is the file from the previous step
+- the outputRoot is usually /calteam/data/COSMICS/CosmicObservations/
+
+If everything ran correctly, you now have a collection of CosmicObservation fits files
+
+
+
+------------------------------------------------------------------------------
+AUXILLARY DATA
+------------------------------------------------------------------------------
+Here is how to generate the auxillary data from fluxes to spin phase and orbit
+
+::::::::::::::::::::::::::::::::::::::::
+FLUXES FROM CosmicObservations
+
+One step: Run ./scripts/flux_extraction.py
+- the inputPath is the root directory of where your CosmicObservations are saved - e.g. usually /calteam/data/COSMICS/CosmicObservations/
+- the outputFolder is usually /calteam/data/COSMICS/Fluxes
+
+Note that you should remove the FLUX_BAM-OBS.fits, FLUX_BAM-SIF.fits and FLUX_SM-SIF.fits before (they are not overwritten by default)
+
+
+::::::::::::::::::::::::::::::::::::::::
+FLUXES from SM-PPE
+
+Run the non-spark script ./scripts/non_spark/PPE_flux.fits.py
+- the inputRoot is the path containing the ASD4 PPE text files
+- the outputRoot is usually /calteam/data/COSMICS/Fluxes - the existing FLUX_SM-PPE.fits needs to be removed, if it exists
+
+
+::::::::::::::::::::::::::::::::::::::::
+SPIN PHASE and ORBIT
+
+Run the non-spark scripts ./scripts/non_spark/SpinPhase.fits  and ./scripts/non_spark/Orbit_fits.py
+- inputFiles are the text files containing the spin phase and ephemerises of earth and gaia, respectively
+- the outputRoot is usually /calteam/data/COSMICS/Auxillary - the existing files can not be overwritten by default!
