@@ -45,7 +45,8 @@
 \maketitle
 \tableofcontents
 \begin{versionhistory}
-  \vhEntry{1.0}{29.10.2017}{A. Abreu}{First Data Model. Initial Definition}
+  \vhEntry{0.1}{29.10.2017}{A. Abreu}{First Data Model. Initial Definition}
+  \vhEntry{1.0}{09.03.2018}{C. Kirsch}{First full draft, including algorithms and Data Model.}
 \end{versionhistory}
 
 \newpage
@@ -116,16 +117,25 @@ accumulated TDI images into a single line, and the creation of a new
 ``blank'' empty space ``in front of'' this line.
 \end{itemize}
 
-\textit{It would be nice here to add a latex native graphics of the CCD sumarizing all this}
+Figure \ref{fig:CCD_definitions} summarizes these definitions.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.8\textwidth,trim=70 260 100 260 ,clip]{images/ccd}
+  \caption{CCD-related notations, taken from \cite{GAIA-CA-SP-ARI-BAS-003}.}
+  \label{fig:CCD_definitions}
+\end{figure}
+
 
 \subsubsection{Reference System}
-Certainly needed.
-\newline
-\newline
-The following image shows the Gaia Focal Plan Array composed of 106 CCDs and the different CCD variants (BAM/AF):
-\newline
-\newline
-\textit{It would be nice here to add here a latex native graphics of the FPA}
+Figure \ref{fig:focal_plane} shows the Gaia Focal Plan Array composed of 106 CCDs and the different CCD variants (BAM/AF).
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{images/astro-focal-plane-v5-alex-short}
+  \caption{The Focal-Plane Reference System, taken from \cite{GAIA-CA-SP-ARI-BAS-003}.}
+  \label{fig:focal_plane}
+\end{figure}
 
 \subsection{Data Source}
 
@@ -909,7 +919,7 @@ Extrapolating from table \ref{tab:CosObs_volume}, we assume that the average add
 
 %Assuming an average event rate (in the absence of solar activity) of : 5 events/s , the average volume of the catalog per spacecraft revolution is : x bytes. Since Gaia performs 4 full revs on it's spin axis every 24 hrs, the average catalog volume per 24 hrs is : y bytes. This needs then to be multiplied by the total nb of mission days covered by the corresponding version of the catalog. 
 
-Table \ref{tab:AuxDat_volume} lists the size of the datasets for the fluxes and auxillary data, from January 2014 to January 2018. The Flux data groups all datasets (SM-SIF, SM-PPE, BAM-SIF, SM-PPE) and is dominated by the BAM-OBS and PPE data, whose sampling is constant and the only scaling factor for the catalog size. The spin phase and spacecraft location data sizes are dominated by the sampling at which they are provided.
+Table \ref{tab:AuxDat_volume} lists the size of the datasets for the fluxes and auxillary data, from January 2014 to January 2018. The Flux data groups all datasets (SM-SIF, SM-PPE, BAM-SIF, BAM-OBS) and is dominated by the BAM-OBS and PPE data, whose sampling is constant and the only scaling factor for the catalog size. The spin phase and spacecraft location data sizes are dominated by the sampling at which they are provided.
 
 \begin{table}[!h]
 \centering
